@@ -234,7 +234,7 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
       application_form_status: initialData?.application_form_status ?? '未対応',
       delivery_notice_status: initialData?.delivery_notice_status ?? '未対応',
       invoice_status: initialData?.invoice_status ?? '未対応',
-      payment_method: initialData?.payment_method ?? '',
+      payment_method: initialData?.payment_method ?? null,
       status: (initialData?.status as any) ?? 'inquiry',
       cancel_reason_id: initialData?.cancel_reason_id ?? '',
       cancel_note: initialData?.cancel_note ?? '',
