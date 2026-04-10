@@ -1,14 +1,18 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-/**
- * 認証ミドルウェア
- * - 未ログインユーザーを /login にリダイレクト
- * - ログイン済みユーザーが /login にアクセスした場合は / にリダイレクト
- * - セッションの更新処理を行う
- */
+type CookieToSet = {
+  name: string
+  value: string
+  options?: CookieOptions
+}
+
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request })
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,52 +22,29 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
+        setAll(cookiesToSet: CookieToSet[]) {
+          cookiesToSet.forEach(({ name, value, options }) => {
             request.cookies.set(name, value)
-          )
-          supabaseResponse = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
+            response.cookies.set(name, value, options)
+          })
         },
       },
     }
   )
 
-  // セッション取得（トークン更新のため必須）
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  await supabase.auth.getUser()
 
-  const { pathname } = request.nextUrl
-
-  // 未ログインの場合、/login 以外へのアクセスはリダイレクト
-  if (!user && !pathname.startsWith('/login') && !pathname.startsWith('/api/auth')) {
-    const redirectUrl = request.nextUrl.clone()
-    redirectUrl.pathname = '/login'
-    redirectUrl.searchParams.set('redirectTo', pathname)
-    return NextResponse.redirect(redirectUrl)
-  }
-
-  // ログイン済みで /login にアクセスした場合はダッシュボードへ
-  if (user && pathname.startsWith('/login')) {
-    const redirectUrl = request.nextUrl.clone()
-    redirectUrl.pathname = '/'
-    return NextResponse.redirect(redirectUrl)
-  }
-
-  return supabaseResponse
+  return response
 }
 
 export const config = {
   matcher: [
     /*
-     * 以下を除くすべてのパスに適用:
-     * - _next/static (静的ファイル)
-     * - _next/image (画像最適化)
+     * 以下を除外
+     * - _next/static
+     * - _next/image
      * - favicon.ico
-     * - public ディレクトリ
+     * - 画像拡張子
      */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],

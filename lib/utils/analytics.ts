@@ -60,39 +60,41 @@ export interface CaseRow {
 }
 
 export interface KpiResult {
-  inquiry:       number   // 問合せ件数
-  preview:       number   // 下見件数
-  confirmed:     number   // 確定件数
-  cancelManual:  number   // 手動キャンセル
-  cancelAuto:    number   // 自動キャンセル
+  inquiry: number   // 問合せ件数
+  preview: number   // 下見件数
+  confirmed: number   // 確定件数
+  cancelManual: number   // 手動キャンセル
+  cancelAuto: number   // 自動キャンセル
   estimateTotal: number   // 見積合計（キャンセル除く）
-  revenue:       number   // 確定売上
-  avgPrice:      number   // 平均単価
-  previewRate:   number   // 問合せ→下見率(%)
-  confirmRate:   number   // 下見→確定率(%)
-  cvRate:        number   // 問合せ→確定率(%)
+  revenue: number   // 確定売上
+  avgPrice: number   // 平均単価
+  previewRate: number   // 問合せ→下見率(%)
+  confirmRate: number   // 下見→確定率(%)
+  cvRate: number   // 問合せ→確定率(%)
 }
 
 /** cases の配列からKPIを計算する */
 export function calcKpi(cases: CaseRow[]): KpiResult {
-  const inquiry       = cases.length
-  const preview       = cases.filter(c => PREVIEWED_STATUSES.includes(c.status)).length
-  const confirmed     = cases.filter(c => REVENUE_STATUSES.includes(c.status)).length
-  const cancelManual  = cases.filter(c => c.status === CANCEL_STATUS && !c.auto_cancel).length
-  const cancelAuto    = cases.filter(c => c.status === CANCEL_STATUS && c.auto_cancel).length
+  const inquiry = cases.length
+  const preview = cases.filter(c => PREVIEWED_STATUSES.includes(c.status)).length
+  const confirmed = cases.filter(c => REVENUE_STATUSES.includes(c.status)).length
+  const cancelManual = cases.filter(c => c.status === CANCEL_STATUS && !c.auto_cancel).length
+  const cancelAuto = cases.filter(c => c.status === CANCEL_STATUS && c.auto_cancel).length
   const estimateTotal = cases
     .filter(c => c.status !== CANCEL_STATUS)
     .reduce((s, c) => s + (c.estimate_amount ?? 0), 0)
   const revenue = cases
     .filter(c => REVENUE_STATUSES.includes(c.status))
     .reduce((s, c) => s + (c.estimate_amount ?? 0), 0)
-  const avgPrice    = calcAvgPrice(revenue, confirmed)
+  const avgPrice = calcAvgPrice(revenue, confirmed)
   const previewRate = calcPercent(preview, inquiry)
   const confirmRate = calcPercent(confirmed, preview)
-  const cvRate      = calcPercent(confirmed, inquiry)
+  const cvRate = calcPercent(confirmed, inquiry)
 
-  return { inquiry, preview, confirmed, cancelManual, cancelAuto,
-           estimateTotal, revenue, avgPrice, previewRate, confirmRate, cvRate }
+  return {
+    inquiry, preview, confirmed, cancelManual, cancelAuto,
+    estimateTotal, revenue, avgPrice, previewRate, confirmRate, cvRate
+  }
 }
 
 /** 対象期間の cases をフィルタリング（inquiry_date ベース） */
@@ -105,9 +107,12 @@ export function filterByMonth(cases: CaseRow[], yearMonth: string): CaseRow[] {
 }
 
 /** cases から inquiry_date の年リストを取得 */
-export function getYears(cases: CaseRow[]): string[] {
+export function getAvailableYears(cases: CaseRow[]) {
   const years = new Set(
-    cases.filter(c => c.inquiry_date).map(c => c.inquiry_date!.slice(0, 4))
+    cases
+      .filter((c) => c.inquiry_date)
+      .map((c) => c.inquiry_date!.slice(0, 4))
   )
-  return [...years].sort().reverse()
+
+  return Array.from(years).sort().reverse()
 }

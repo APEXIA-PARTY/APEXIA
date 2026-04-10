@@ -46,10 +46,10 @@ export function CaseStatusChanger({
   // キャンセル理由マスタを取得
   useEffect(() => {
     fetch('/api/master/cancel-reasons')
-      .then((r) => r.ok ? r.json() : [])
+      .then((r) => (r.ok ? r.json() : []))
       .then((data: CancelReasonItem[]) =>
         // 自動キャンセル専用理由は手動選択から除外
-        setReasons(Array.isArray(data) ? data.filter((r: any) => !r.is_auto_cancel) : [])
+        setReasons(Array.isArray(data) ? data.filter((r: CancelReasonItem) => !r.is_auto_cancel) : [])
       )
   }, [])
 
@@ -126,10 +126,13 @@ export function CaseStatusChanger({
     <div className="flex flex-wrap items-center gap-3">
       {/* 現在のステータスバッジ + 変更ボタン */}
       <div className="flex items-center gap-2">
-        <span className={cn(
-          'inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold',
-          config.bgColor, config.color
-        )}>
+        <span
+          className={cn(
+            'inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold',
+            config.bgColor,
+            config.color
+          )}
+        >
           {config.label}
           {autoCancel && ' （自動）'}
         </span>
@@ -148,12 +151,12 @@ export function CaseStatusChanger({
 
       {/* 変更パネル */}
       {open && (
-        <div className="w-full rounded-lg border border-border bg-card p-4 space-y-3 shadow-sm">
+        <div className="w-full space-y-3 rounded-lg border border-border bg-card p-4 shadow-sm">
           <p className="text-sm font-medium text-foreground">ステータスを変更</p>
 
           {/* ステータス選択 */}
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">新しいステータス</label>
+            <label className="mb-1 block text-xs text-muted-foreground">新しいステータス</label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as CaseStatus)}
@@ -161,19 +164,21 @@ export function CaseStatusChanger({
             >
               {STATUS_LIST
                 // 自動キャンセルは手動で選択不可
-                .filter((s) => s.value !== 'auto_cancel')
+                .filter((s) => String(s.value) !== 'auto_cancel')
                 .map((s) => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
                 ))}
             </select>
           </div>
 
           {/* キャンセル選択時のみ追加入力 */}
           {isCancelled && (
-            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-3">
+            <div className="space-y-3 rounded-md border border-destructive/30 bg-destructive/5 p-3">
               <p className="text-xs font-medium text-destructive">キャンセル情報を入力してください</p>
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">
+                <label className="mb-1 block text-xs text-muted-foreground">
                   キャンセル理由 <span className="text-destructive">*</span>
                 </label>
                 <select
@@ -183,17 +188,19 @@ export function CaseStatusChanger({
                 >
                   <option value="">選択してください</option>
                   {reasons.map((r) => (
-                    <option key={r.id} value={r.id}>{r.name}</option>
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">キャンセル備考</label>
+                <label className="mb-1 block text-xs text-muted-foreground">キャンセル備考</label>
                 <textarea
                   value={cancelNote}
                   onChange={(e) => setCancelNote(e.target.value)}
                   rows={2}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                  className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="任意"
                 />
               </div>

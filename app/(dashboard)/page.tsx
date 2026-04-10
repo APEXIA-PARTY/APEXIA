@@ -35,10 +35,10 @@ export default async function DashboardPage() {
   const { data: allCasesRaw } = await supabase
     .from('cases')
     .select(
-      'id,status,auto_cancel,estimate_amount,inquiry_date,event_date,company,event_name,media_id,event_category_id,updated_at'
+      'id,status,auto_cancel,estimate_amount,inquiry_date,event_date,company,event_name,media_id,event_category_id,updated_at,contact_method_id,floor_id,event_subcategory_id,cancel_reason_id,cancel_note'
     )
 
-  const rows: CaseRow[] = Array.isArray(allCasesRaw) ? (allCasesRaw as CaseRow[]) : []
+  const rows = (Array.isArray(allCasesRaw) ? allCasesRaw : []) as unknown as CaseRow[]
   const monthRows = filterByMonth(rows, thisMonth)
   const yearRows = filterByYear(rows, thisYear)
   const mk = calcKpi(monthRows)
