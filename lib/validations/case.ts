@@ -19,11 +19,13 @@ const emptyToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
  */
 const optionalNumber = z.preprocess((val) => {
   if (val === '' || val === null || val === undefined) return undefined
+
   if (typeof val === 'string') {
     const cleaned = val.replace(/,/g, '')
     const num = Number(cleaned)
     return Number.isNaN(num) ? undefined : num
   }
+
   return val
 }, z.number().int().min(0).optional())
 
@@ -36,42 +38,59 @@ const optionalUuid = emptyToNull(z.string().uuid().nullable().optional())
 /**
  * 時間項目用
  * '' → null
+ * "HH:MM:SS" → "HH:MM"
  * HH:MM 以外は弾く
  * ただし空はOK
  */
-const optionalTime = z.preprocess((val) => {
-  if (val === '' || val === undefined || val === null) return null
-  if (typeof val === 'string' && /^\d{2}:\d{2}:\d{2}$/.test(val)) {
-    return val.slice(0, 5)
-  }
-  return val
-},
-  z.string()
-    .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
-    .nullable()
-    .optional()
+const optionalTime = z.preprocess(
+  (val) => {
+    if (val === '' || val === undefined || val === null) return null
+
+    if (typeof val === 'string' && /^\d{2}:\d{2}:\d{2}$/.test(val)) {
+      return val.slice(0, 5)
+    }
+
+    return val
+  },
+  z.union([
+    z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+    z.null(),
+  ]).optional()
 )
 
 /**
  * 案件フォームのバリデーションスキーマ
- * 今回は「未入力でも登録できる」方針
+ * 未入力でも登録できる方針
  */
 export const caseFormSchema = z.object({
   // 基本情報
-  company: emptyToUndefined(z.string().max(200).optional()),
+  company: z.string().min(1, '会社名は必須です').max(200),
   contact: emptyToUndefined(z.string().max(100).optional()),
   phone: emptyToUndefined(z.string().max(20).optional()),
-  email: z.preprocess((val) => {
-    if (val === '' || val === null || val === undefined) return undefined
-    return val
-  }, z.string().email('メールアドレスの形式が正しくありません').optional()),
+  email: z.preprocess(
+    (val) => {
+      if (val === '' || val === null || val === undefined) return undefined
+      return val
+    },
+    z.string().email('メールアドレスの形式が正しくありません').optional()
+  ),
 
-  inquiry_date: emptyToUndefined(z.string().optional()),
+  inquiry_date: z.string().min(1, '問合せ日は必須です'),
   event_date: emptyToUndefined(z.string().optional()),
   event_name: emptyToUndefined(z.string().max(200).optional()),
   guest_count: optionalNumber,
   notes: emptyToUndefined(z.string().max(2000).optional()),
-  estimate_amount: optionalNumber.default(0),
+  estimate_amount: z.preprocess((val) => {
+    if (val === '' || val === null || val === undefined) return 0
+
+    if (typeof val === 'string') {
+      const cleaned = val.replace(/,/g, '')
+      const num = Number(cleaned)
+      return Number.isNaN(num) ? 0 : num
+    }
+
+    return val
+  }, z.number().int().min(0)).default(0),
 
   // マスタFK
   media_id: optionalUuid,
@@ -94,7 +113,10 @@ export const caseFormSchema = z.object({
   preview_datetime: emptyToUndefined(z.string().optional()),
   application_form_status: z.enum(['未対応', '済み']).optional().default('未対応'),
   delivery_notice_status: z.enum(['未対応', '済み']).optional().default('未対応'),
-  invoice_status: z.enum(['未対応', '発行依頼', '送付済み', '振り込み済み']).optional().default('未対応'),
+  invoice_status: z
+    .enum(['未対応', '発行依頼', '送付済み', '振り込み済み'])
+    .optional()
+    .default('未対応'),
   payment_method: emptyToNull(
     z.enum(['キャッシュレス', '現金', '現金+キャッシュレス']).nullable().optional()
   ),
@@ -120,7 +142,7 @@ export type CaseFormValues = z.infer<typeof caseFormSchema>
 
 /**
  * キャンセル処理専用スキーマ
- * これはキャンセル時だけ使うのでそのまま厳しめ
+ * これはキャンセル時だけ使うので厳しめ
  */
 export const cancelCaseSchema = z.object({
   cancel_reason_id: z.string().uuid('キャンセル理由を選択してください'),
@@ -143,7 +165,9 @@ export const caseFilterSchema = z.object({
   month: z.string().optional(),
   page: z.number().int().min(1).default(1),
   pageSize: z.number().int().min(1).max(100).default(20),
-  sortBy: z.enum(['event_date', 'inquiry_date', 'updated_at', 'estimate_amount']).default('inquiry_date'),
+  sortBy: z
+    .enum(['event_date', 'inquiry_date', 'updated_at', 'estimate_amount'])
+    .default('inquiry_date'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
 })
 
