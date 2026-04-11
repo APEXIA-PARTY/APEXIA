@@ -331,7 +331,7 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
   )
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
       <section className={sec}>
         <h2 className="font-semibold text-foreground">① 基本情報</h2>
 
