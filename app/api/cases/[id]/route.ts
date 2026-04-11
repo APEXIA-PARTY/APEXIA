@@ -77,11 +77,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
   const parsed = caseFormSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
-      {
-        message: 'バリデーションエラー',
-        errors: parsed.error.flatten(),
-        issues: parsed.error.issues,
-      },
+      { message: 'バリデーションエラー', errors: parsed.error.flatten() },
       { status: 422 }
     )
   }

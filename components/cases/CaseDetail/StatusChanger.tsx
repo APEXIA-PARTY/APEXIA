@@ -100,8 +100,7 @@ export function CaseStatusChanger({
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-
-        toast.error(JSON.stringify(err))
+        toast.error(err.message ?? 'ステータスの更新に失敗しました')
         return
       }
 
