@@ -306,7 +306,7 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
 
       const data = await res.json()
       toast.success(isEdit ? '案件を更新しました' : '案件を登録しました')
-      router.push(`/cases/${data.id}`)
+      router.push('/cases')
       router.refresh()
     } finally {
       setLoading(false)

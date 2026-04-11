@@ -95,7 +95,10 @@ $$;
 -- 書き込み: staff 以上
 -- 削除:     staff 以上
 
-CREATE POLICY "authenticated_can_read_cases" ON cases
+CREATE POLICY "anyone_can_insert_cases" ON cases
+FOR INSERT
+TO authenticated
+WITH CHECK (true);
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "staff_can_insert_cases" ON cases
