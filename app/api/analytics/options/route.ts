@@ -9,8 +9,8 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createClient()
   const { searchParams } = new URL(request.url)
-  const year     = searchParams.get('year')
-  const month    = searchParams.get('month')
+  const year = searchParams.get('year')
+  const month = searchParams.get('month')
   const category = searchParams.get('category') ?? 'equipment'
 
   const [{ data: masters }, { data: optionRows }, { data: cases }] = await Promise.all([
@@ -23,8 +23,8 @@ export async function GET(request: NextRequest) {
 
   // 期間フィルター（案件ベース）
   let filteredCases = cases as { id: string; status: string; inquiry_date: string | null }[]
-  if (month)      filteredCases = filteredCases.filter(c => c.inquiry_date?.startsWith(month))
-  else if (year)  filteredCases = filteredCases.filter(c => c.inquiry_date?.startsWith(year))
+  if (month) filteredCases = filteredCases.filter(c => c.inquiry_date?.startsWith(month))
+  else if (year) filteredCases = filteredCases.filter(c => c.inquiry_date?.startsWith(year))
 
   const caseIdSet = new Set(filteredCases.map(c => c.id))
 
@@ -33,14 +33,20 @@ export async function GET(request: NextRequest) {
 
   // option_id でグルーピング
   const result = (masters ?? []).map(m => {
-    const mOpts    = filteredOptions.filter(o => o.option_id === m.id)
-    const caseIds  = [...new Set(mOpts.map(o => o.case_id))]
-    const revenue  = mOpts.reduce((s, o) => s + (o.amount ?? 0), 0)
+    const mOpts = filteredOptions.filter(o => o.option_id === m.id)
+    const caseIds = Array.from(
+      new Set(
+        mOpts
+          .map((o) => o.case_id)
+          .filter((v): v is string => typeof v === 'string' && v !== '')
+      )
+    )
+    const revenue = mOpts.reduce((s, o) => s + (o.amount ?? 0), 0)
     return {
-      id:              m.id,
-      name:            m.name,
+      id: m.id,
+      name: m.name,
       machine_category: m.machine_category,
-      useCount:        caseIds.length,
+      useCount: caseIds.length,
       revenue,
     }
   })
