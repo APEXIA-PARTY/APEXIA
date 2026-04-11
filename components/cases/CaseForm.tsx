@@ -18,6 +18,10 @@ interface CaseFormProps {
 type MasterItem = { id: string; name: string }
 type SubcategoryItem = MasterItem & { category_id: string }
 
+// ─── 15分刻み時刻セレクタ ─────────────────────────────────────────
+// input[type=time] + step属性だとブラウザ依存になるため、
+// 時・分を別セレクトで実装し HH:MM 文字列に組み立てる
+
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
 const MINUTES = ['00', '15', '30', '45']
 
@@ -31,6 +35,7 @@ function TimeSelect({ value, onChange, disabled }: TimeSelectProps) {
   const [h, setH] = useState('')
   const [m, setM] = useState('00')
 
+  // 外部値 → ローカル state に反映
   useEffect(() => {
     if (value && /^\d{2}:\d{2}$/.test(value)) {
       setH(value.slice(0, 2))
@@ -57,8 +62,7 @@ function TimeSelect({ value, onChange, disabled }: TimeSelectProps) {
     if (h !== '') onChange(`${h}:${newM}`)
   }
 
-  const sel =
-    'rounded-md border border-input bg-background px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer disabled:opacity-50'
+  const sel = 'rounded-md border border-input bg-background px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer disabled:opacity-50'
 
   return (
     <div className="flex items-center gap-1">
@@ -70,12 +74,10 @@ function TimeSelect({ value, onChange, disabled }: TimeSelectProps) {
       >
         <option value="">--</option>
         {HOURS.map((hh) => (
-          <option key={hh} value={hh}>
-            {hh}
-          </option>
+          <option key={hh} value={hh}>{hh}</option>
         ))}
       </select>
-      <span className="text-sm font-medium text-muted-foreground">:</span>
+      <span className="text-muted-foreground text-sm font-medium">:</span>
       <select
         value={m}
         onChange={(e) => handleMinute(e.target.value)}
@@ -83,19 +85,13 @@ function TimeSelect({ value, onChange, disabled }: TimeSelectProps) {
         className={`${sel} w-16`}
       >
         {MINUTES.map((mm) => (
-          <option key={mm} value={mm}>
-            {mm}
-          </option>
+          <option key={mm} value={mm}>{mm}</option>
         ))}
       </select>
       {h !== '' && (
         <button
           type="button"
-          onClick={() => {
-            setH('')
-            setM('00')
-            onChange(null)
-          }}
+          onClick={() => { setH(''); setM('00'); onChange(null) }}
           className="ml-1 text-xs text-muted-foreground hover:text-destructive"
           tabIndex={-1}
         >
@@ -106,6 +102,7 @@ function TimeSelect({ value, onChange, disabled }: TimeSelectProps) {
   )
 }
 
+// ─── 下見日時セレクタ（日付 + 時・分15分刻み） ────────────────────
 interface DateTimeSelectProps {
   value: string | undefined
   onChange: (v: string) => void
@@ -128,15 +125,12 @@ function PreviewDateTimeSelect({ value, onChange }: DateTimeSelectProps) {
   }, [value])
 
   const emit = (d: string, h: string, mi: string) => {
-    if (!d || !h) {
-      onChange('')
-      return
-    }
+    if (!d) { onChange(''); return }
+    if (!h) { onChange(d); return }
     onChange(`${d}T${h}:${mi}`)
   }
 
-  const inp =
-    'rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring'
+  const inp = 'rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring'
   const sel = `${inp} cursor-pointer`
 
   return (
@@ -144,52 +138,29 @@ function PreviewDateTimeSelect({ value, onChange }: DateTimeSelectProps) {
       <input
         type="date"
         value={datePart}
-        onChange={(e) => {
-          emit(e.target.value, localH, localM)
-        }}
+        onChange={(e) => { emit(e.target.value, localH, localM) }}
         className={`${inp} w-40`}
       />
       <div className="flex items-center gap-1">
-        <select
-          value={localH}
-          onChange={(e) => {
-            setLocalH(e.target.value)
-            emit(datePart, e.target.value, localM)
-          }}
-          className={`${sel} w-20`}
-        >
+        <select value={localH} onChange={(e) => { setLocalH(e.target.value); emit(datePart, e.target.value, localM) }} className={`${sel} w-20`}>
           <option value="">--時</option>
-          {HOURS.map((h) => (
-            <option key={h} value={h}>
-              {h}
-            </option>
-          ))}
+          {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
         </select>
-        <span className="text-sm text-muted-foreground">:</span>
-        <select
-          value={localM}
-          onChange={(e) => {
-            setLocalM(e.target.value)
-            emit(datePart, localH, e.target.value)
-          }}
-          disabled={!localH}
-          className={`${sel} w-16`}
-        >
-          {MINUTES.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
+        <span className="text-muted-foreground text-sm">:</span>
+        <select value={localM} onChange={(e) => { setLocalM(e.target.value); emit(datePart, localH, e.target.value) }} disabled={!localH} className={`${sel} w-16`}>
+          {MINUTES.map((m) => <option key={m} value={m}>{m}</option>)}
         </select>
       </div>
     </div>
   )
 }
 
+// ─── メインフォーム ───────────────────────────────────────────────
 export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
+  // マスタデータ
   const [mediaList, setMediaList] = useState<MasterItem[]>([])
   const [contactMethods, setContactMethods] = useState<MasterItem[]>([])
   const [eventCategories, setEventCategories] = useState<MasterItem[]>([])
@@ -203,7 +174,6 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
     handleSubmit,
     watch,
     control,
-    setValue,
     formState: { errors },
   } = useForm<CaseFormValues>({
     resolver: zodResolver(caseFormSchema),
@@ -224,6 +194,7 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
       event_category_id: initialData?.event_category_id ?? '',
       event_subcategory_id: initialData?.event_subcategory_id ?? '',
       event_subcategory_note: initialData?.event_subcategory_note ?? '',
+      // 時刻フィールド: DB値（HH:MM）をそのまま初期値に。空の場合は空文字
       load_in_time: initialData?.load_in_time ?? '',
       setup_time: initialData?.setup_time ?? '',
       rehearsal_time: initialData?.rehearsal_time ?? '',
@@ -235,7 +206,7 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
       application_form_status: initialData?.application_form_status ?? '未対応',
       delivery_notice_status: initialData?.delivery_notice_status ?? '未対応',
       invoice_status: initialData?.invoice_status ?? '未対応',
-      payment_method: initialData?.payment_method ?? null,
+      payment_method: initialData?.payment_method ?? '',
       status: (initialData?.status as any) ?? 'inquiry',
       cancel_reason_id: initialData?.cancel_reason_id ?? '',
       cancel_note: initialData?.cancel_note ?? '',
@@ -245,20 +216,19 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
   const watchStatus = watch('status')
   const watchCategoryId = watch('event_category_id')
   const watchSubcategoryId = watch('event_subcategory_id')
-  const watchEstimateAmount = watch('estimate_amount')
 
   const isSubcategoryOther =
     !!watchSubcategoryId &&
     watchSubcategoryId !== '' &&
     eventSubcategories.find((s) => s.id === watchSubcategoryId)?.name === 'その他'
 
+  // ─── マスタ取得 ─────────────────────────────────────────────────
   useEffect(() => {
     const safeJson = async (res: Response) => {
       if (!res.ok) return []
       const d = await res.json().catch(() => [])
       return Array.isArray(d) ? d : []
     }
-
     Promise.all([
       fetch('/api/master/media').then(safeJson).catch(() => []),
       fetch('/api/master/contact-methods').then(safeJson).catch(() => []),
@@ -275,18 +245,19 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
     })
   }, [])
 
+  // 大分類変更時に中分類を取得
   useEffect(() => {
     if (!watchCategoryId || watchCategoryId === '') {
       setEventSubcategories([])
       return
     }
-
     fetch(`/api/master/event-subcategories?category_id=${watchCategoryId}`)
-      .then((r) => (r.ok ? r.json() : []))
+      .then((r) => r.ok ? r.json() : [])
       .then((d) => setEventSubcategories(Array.isArray(d) ? d : []))
       .catch(() => setEventSubcategories([]))
   }, [watchCategoryId])
 
+  // ─── 送信 ────────────────────────────────────────────────────────
   const onSubmit = async (values: CaseFormValues) => {
     setLoading(true)
     try {
@@ -297,44 +268,43 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
       })
-
       if (!res.ok) {
         const errBody = await res.json().catch(() => ({}))
         toast.error(errBody.message ?? '保存に失敗しました')
         return
       }
-
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       toast.success(isEdit ? '案件を更新しました' : '案件を登録しました')
-      router.push('/cases')
+      // data.id が取れない場合は一覧にフォールバック
+      router.push(data?.id ? `/cases/${data.id}` : '/cases')
       router.refresh()
     } finally {
       setLoading(false)
     }
   }
 
-  const inp =
-    'w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring'
+  // ─── スタイル ────────────────────────────────────────────────────
+  const inp = 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring'
   const sel = `${inp} cursor-pointer`
-  const lbl = 'mb-1 block text-sm font-medium text-foreground'
+  const lbl = 'block text-sm font-medium text-foreground mb-1'
   const errCls = 'mt-1 text-xs text-destructive'
-  const sec = 'space-y-4 rounded-lg border border-border bg-card p-5'
+  const sec = 'rounded-lg border border-border bg-card p-5 space-y-4'
   const grid2 = 'grid grid-cols-1 gap-4 sm:grid-cols-2'
   const grid3 = 'grid grid-cols-1 gap-4 sm:grid-cols-3'
 
-  const loadingOpt = mastersLoading ? (
-    <option value="" disabled>
-      読み込み中...
-    </option>
-  ) : (
-    <option value="">選択してください</option>
-  )
+  // マスタ読み込み中のプレースホルダーオプション
+  const loadingOpt = mastersLoading
+    ? <option value="" disabled>読み込み中...</option>
+    : <option value="">選択してください</option>
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+
+      {/* ① 基本情報 */}
       <section className={sec}>
         <h2 className="font-semibold text-foreground">① 基本情報</h2>
 
+        {/* 会社名（必須） */}
         <div>
           <label className={lbl}>
             会社名 / 団体名 <span className="text-destructive">*</span>
@@ -343,6 +313,7 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
           {errors.company && <p className={errCls}>{errors.company.message}</p>}
         </div>
 
+        {/* 担当者・電話 */}
         <div className={grid2}>
           <div>
             <label className={lbl}>担当者名</label>
@@ -354,12 +325,14 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
           </div>
         </div>
 
+        {/* メール */}
         <div>
           <label className={lbl}>メールアドレス</label>
           <input {...register('email')} type="email" className={inp} placeholder="example@company.com" />
           {errors.email && <p className={errCls}>{errors.email.message}</p>}
         </div>
 
+        {/* 問合せ日・開催日・参加人数 */}
         <div className={grid3}>
           <div>
             <label className={lbl}>
@@ -376,39 +349,31 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
             <label className={lbl}>予定参加人数</label>
             <div className="relative">
               <input
-                {...register('guest_count', {
-                  setValueAs: (v) => (v === '' || v === null || v === undefined ? undefined : Number(v)),
-                })}
+                {...register('guest_count', { valueAsNumber: true })}
                 type="number"
                 min="0"
                 className={`${inp} pr-8`}
                 placeholder="0"
               />
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                名
-              </span>
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">名</span>
             </div>
           </div>
         </div>
 
+        {/* イベント名 */}
         <div>
           <label className={lbl}>イベント名</label>
-          <input
-            {...register('event_name')}
-            className={inp}
-            placeholder="例: 〇〇社創立30周年パーティー"
-          />
+          <input {...register('event_name')} className={inp} placeholder="例: 〇〇社創立30周年パーティー" />
         </div>
 
+        {/* フロア・認知経路 */}
         <div className={grid2}>
           <div>
             <label className={lbl}>フロア</label>
             <select {...register('floor_id')} className={sel}>
               {loadingOpt}
               {floors.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
+                <option key={f.id} value={f.id}>{f.name}</option>
               ))}
             </select>
             {floors.length === 0 && !mastersLoading && (
@@ -420,9 +385,7 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
             <select {...register('media_id')} className={sel}>
               {loadingOpt}
               {mediaList.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
+                <option key={m.id} value={m.id}>{m.name}</option>
               ))}
             </select>
             {mediaList.length === 0 && !mastersLoading && (
@@ -431,15 +394,14 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
           </div>
         </div>
 
+        {/* 連絡方法・見積金額 */}
         <div className={grid2}>
           <div>
             <label className={lbl}>連絡方法</label>
             <select {...register('contact_method_id')} className={sel}>
               {loadingOpt}
               {contactMethods.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
+                <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
             {contactMethods.length === 0 && !mastersLoading && (
@@ -447,42 +409,30 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
             )}
           </div>
           <div>
+            {/* B. 見積金額: ¥プレフィックス表示 */}
             <label className={lbl}>見積金額（税込）</label>
             <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                ¥
-              </span>
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">¥</span>
               <input
-                type="text"
-                value={
-                  watchEstimateAmount !== undefined && watchEstimateAmount !== null
-                    ? Number(watchEstimateAmount).toLocaleString()
-                    : ''
-                }
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/,/g, '')
-                  const num = raw === '' ? 0 : Number(raw)
-                  if (!isNaN(num)) {
-                    setValue('estimate_amount', num)
-                  }
-                }}
+                {...register('estimate_amount', { valueAsNumber: true })}
+                type="number"
+                min="0"
+                step="1"
                 className={`${inp} pl-7`}
                 placeholder="0"
-                inputMode="numeric"
               />
             </div>
           </div>
         </div>
 
+        {/* イベント大分類・中分類 */}
         <div className={grid2}>
           <div>
             <label className={lbl}>イベント大分類</label>
             <select {...register('event_category_id')} className={sel}>
               {loadingOpt}
               {eventCategories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
+                <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
             {eventCategories.length === 0 && !mastersLoading && (
@@ -503,21 +453,18 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
             >
               <option value="">選択してください</option>
               {eventSubcategories.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
+                <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
           </div>
         </div>
 
+        {/* 中分類「その他」のみ: 自由入力欄 */}
         {isSubcategoryOther && (
           <div>
             <label className={lbl}>
               中分類その他 — 詳細
-              <span className="ml-1 text-xs font-normal text-muted-foreground">
-                （「その他」を選択した場合に入力）
-              </span>
+              <span className="ml-1 text-xs font-normal text-muted-foreground">（「その他」を選択した場合に入力）</span>
             </label>
             <input
               {...register('event_subcategory_note')}
@@ -527,31 +474,27 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
           </div>
         )}
 
+        {/* 備考 */}
         <div>
           <label className={lbl}>備考</label>
-          <textarea
-            {...register('notes')}
-            rows={3}
-            className={inp}
-            placeholder="その他の情報・連絡事項など"
-          />
+          <textarea {...register('notes')} rows={3} className={inp} placeholder="その他の情報・連絡事項など" />
         </div>
 
+        {/* ステータス */}
         <div className={grid2}>
           <div>
             <label className={lbl}>ステータス</label>
             <select {...register('status')} className={sel}>
               {STATUS_LIST.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
+                <option key={s.value} value={s.value}>{s.label}</option>
               ))}
             </select>
           </div>
         </div>
 
+        {/* キャンセル時のみ表示 */}
         {watchStatus === 'cancelled' && (
-          <div className="space-y-3 rounded-md border border-destructive/30 bg-destructive/5 p-4">
+          <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4 space-y-3">
             <p className="text-sm font-medium text-destructive">キャンセル情報</p>
             <div>
               <label className={lbl}>
@@ -560,9 +503,7 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
               <select {...register('cancel_reason_id')} className={sel}>
                 <option value="">選択してください</option>
                 {cancelReasons.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
+                  <option key={r.id} value={r.id}>{r.name}</option>
                 ))}
               </select>
             </div>
@@ -574,6 +515,7 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
         )}
       </section>
 
+      {/* ② タイムスケジュール */}
       <section className={sec}>
         <h2 className="font-semibold text-foreground">② タイムスケジュール</h2>
         <p className="text-xs text-muted-foreground">
@@ -591,23 +533,31 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
           ] as const).map((f) => (
             <div key={f.name}>
               <label className={lbl}>{f.label}</label>
+              {/* C. 分を15分刻みにするカスタムセレクタ */}
               <Controller
                 name={f.name}
                 control={control}
                 render={({ field }) => (
-                  <TimeSelect value={field.value as string | null | undefined} onChange={field.onChange} />
+                  <TimeSelect
+                    value={field.value as string | null | undefined}
+                    onChange={field.onChange}
+                  />
                 )}
               />
-              {errors[f.name] && <p className={errCls}>{String(errors[f.name]?.message)}</p>}
+              {errors[f.name] && (
+                <p className={errCls}>{String(errors[f.name]?.message)}</p>
+              )}
             </div>
           ))}
         </div>
       </section>
 
+      {/* ③ 確認手続き */}
       <section className={sec}>
         <h2 className="font-semibold text-foreground">③ 確認手続き</h2>
         <div className={grid2}>
           <div>
+            {/* C. 下見日時も15分刻み */}
             <label className={lbl}>下見日時</label>
             <Controller
               name="preview_datetime"
@@ -625,9 +575,7 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
             <select {...register('payment_method')} className={sel}>
               <option value="">選択してください</option>
               {PAYMENT_METHOD_OPTIONS.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
+                <option key={v} value={v}>{v}</option>
               ))}
             </select>
           </div>
@@ -651,15 +599,14 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
             <label className={lbl}>請求書</label>
             <select {...register('invoice_status')} className={sel}>
               {INVOICE_STATUS_OPTIONS.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
+                <option key={v} value={v}>{v}</option>
               ))}
             </select>
           </div>
         </div>
       </section>
 
+      {/* 送信ボタン */}
       <div className="flex items-center justify-end gap-3 rounded-lg border border-border bg-card p-4">
         <button
           type="button"

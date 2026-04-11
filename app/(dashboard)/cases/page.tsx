@@ -24,10 +24,7 @@ export default async function CasesPage({
   searchParams: SearchParams
 }) {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
   const page = Number(searchParams.page ?? 1)
@@ -52,7 +49,6 @@ export default async function CasesPage({
     const s = searchParams.search
     query = query.or(`company.ilike.%${s}%,contact.ilike.%${s}%,event_name.ilike.%${s}%`)
   }
-
   if (searchParams.status) query = query.eq('status', searchParams.status as CaseStatus)
   if (searchParams.media_id) query = query.eq('media_id', searchParams.media_id)
   if (searchParams.floor_id) query = query.eq('floor_id', searchParams.floor_id)
@@ -60,18 +56,13 @@ export default async function CasesPage({
   // ソート・ページング
   query = query.order(sortBy, { ascending: sortOrder }).range(from, to)
 
-  const { data: casesRaw, count } = await query
+  const { data: cases = [], count } = await query
 
   // マスタ（フィルター用）
-  const [{ data: mediaListRaw }, { data: floorListRaw }] = await Promise.all([
+  const [{ data: mediaList = [] }, { data: floorList = [] }] = await Promise.all([
     supabase.from('media_master').select('id, name').eq('is_active', true).order('display_order'),
     supabase.from('floor_master').select('id, name').eq('is_active', true).order('display_order'),
   ])
-
-  // null安全化
-  const cases = Array.isArray(casesRaw) ? casesRaw : []
-  const mediaList = Array.isArray(mediaListRaw) ? mediaListRaw : []
-  const floorList = Array.isArray(floorListRaw) ? floorListRaw : []
 
   const totalPages = Math.ceil((count ?? 0) / pageSize)
 
@@ -87,11 +78,9 @@ export default async function CasesPage({
       sortOrder: sortOrder ? 'asc' : 'desc',
       ...overrides,
     }
-
     Object.entries(merged).forEach(([k, v]) => {
       if (v) params.set(k, v)
     })
-
     return `/cases?${params.toString()}`
   }
 
@@ -115,44 +104,37 @@ export default async function CasesPage({
       <div className="rounded-lg border border-border bg-card p-4">
         <form method="GET" action="/cases" className="flex flex-wrap items-end gap-3">
           {/* 検索 */}
-          <div className="relative min-w-[180px] flex-1">
+          <div className="relative flex-1 min-w-[180px]">
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               name="search"
               defaultValue={searchParams.search}
               placeholder="会社名・担当者・イベント名"
-              className="w-full rounded-md border border-input bg-background py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
-
           {/* ステータス */}
           <select
             name="status"
             defaultValue={searchParams.status ?? ''}
-            className="min-w-[130px] rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-[130px]"
           >
             <option value="">全ステータス</option>
             {STATUS_LIST.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
+              <option key={s.value} value={s.value}>{s.label}</option>
             ))}
           </select>
-
           {/* 媒体 */}
           <select
             name="media_id"
             defaultValue={searchParams.media_id ?? ''}
-            className="min-w-[140px] rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-[140px]"
           >
             <option value="">全認知経路</option>
             {mediaList.map((m: any) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
+              <option key={m.id} value={m.id}>{m.name}</option>
             ))}
           </select>
-
           {/* フロア */}
           <select
             name="floor_id"
@@ -161,9 +143,7 @@ export default async function CasesPage({
           >
             <option value="">全フロア</option>
             {floorList.map((f: any) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
+              <option key={f.id} value={f.id}>{f.name}</option>
             ))}
           </select>
 
@@ -174,10 +154,9 @@ export default async function CasesPage({
             <SlidersHorizontal className="h-4 w-4" />
             絞り込み
           </button>
-
-          <a href="/cases" className="py-2 text-sm text-muted-foreground hover:underline">
+          <Link href="/cases" className="text-sm text-muted-foreground hover:underline py-2">
             クリア
-          </a>
+          </Link>
         </form>
       </div>
 
@@ -192,7 +171,6 @@ export default async function CasesPage({
         ].map((s) => {
           const isActive = sortBy === s.key
           const nextOrder = isActive && !sortOrder ? 'asc' : 'desc'
-
           return (
             <a
               key={s.key}
@@ -208,7 +186,7 @@ export default async function CasesPage({
       </div>
 
       {/* テーブル */}
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
+      <div className="rounded-lg border border-border bg-card overflow-hidden">
         {cases.length === 0 ? (
           <div className="py-16 text-center text-muted-foreground">
             <p className="text-sm">条件に合う案件がありません</p>
@@ -233,28 +211,23 @@ export default async function CasesPage({
               </thead>
               <tbody className="divide-y divide-border">
                 {cases.map((c: any) => (
-                  <tr key={c.id} className="transition-colors hover:bg-muted/30">
+                  <tr key={c.id} className="hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3">
-                      <Link
-                        href={`/cases/${c.id}`}
-                        className="font-medium text-foreground hover:text-primary hover:underline"
-                      >
+                      <Link href={`/cases/${c.id}`} className="font-medium text-foreground hover:text-primary hover:underline">
                         {c.company}
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{c.event_name || '—'}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                      {formatDate(c.event_date)}
-                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{formatDate(c.event_date)}</td>
                     <td className="px-4 py-3 text-muted-foreground">{c.contact || '—'}</td>
                     <td className="px-4 py-3">
                       <StatusBadge status={c.status as CaseStatus} autoCancel={c.auto_cancel} size="sm" />
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{c.media_master?.name || '—'}</td>
-                    <td className="px-4 py-3 text-right font-medium tabular-nums">
+                    <td className="px-4 py-3 text-right tabular-nums font-medium">
                       {c.estimate_amount > 0 ? formatCurrency(c.estimate_amount) : '—'}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">
                       {formatDateTime(c.updated_at)}
                     </td>
                   </tr>
@@ -269,23 +242,15 @@ export default async function CasesPage({
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2">
           {page > 1 && (
-            <a
-              href={buildUrl({ page: String(page - 1) })}
-              className="rounded border border-border px-3 py-1.5 text-sm hover:bg-muted"
-            >
+            <Link href={buildUrl({ page: String(page - 1) })} className="rounded border border-border px-3 py-1.5 text-sm hover:bg-muted">
               前へ
-            </a>
+            </Link>
           )}
-          <span className="text-sm text-muted-foreground">
-            {page} / {totalPages}
-          </span>
+          <span className="text-sm text-muted-foreground">{page} / {totalPages}</span>
           {page < totalPages && (
-            <a
-              href={buildUrl({ page: String(page + 1) })}
-              className="rounded border border-border px-3 py-1.5 text-sm hover:bg-muted"
-            >
+            <Link href={buildUrl({ page: String(page + 1) })} className="rounded border border-border px-3 py-1.5 text-sm hover:bg-muted">
               次へ
-            </a>
+            </Link>
           )}
         </div>
       )}
