@@ -376,7 +376,9 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
             <label className={lbl}>予定参加人数</label>
             <div className="relative">
               <input
-                {...register('guest_count', { valueAsNumber: true })}
+                {...register('guest_count', {
+                  setValueAs: (v) => (v === '' || v === null || v === undefined ? undefined : Number(v)),
+                })}
                 type="number"
                 min="0"
                 className={`${inp} pr-8`}
