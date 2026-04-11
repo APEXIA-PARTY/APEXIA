@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Lock } from 'lucide-react'
+import { Plus, Lock, AlertTriangle, RefreshCw } from 'lucide-react'
 import { MasterTable, ColumnDef } from './MasterTable'
 import { MasterFormDialog, FieldDef } from './MasterFormDialog'
 import { useMasterData, MasterItem } from '@/lib/hooks/useMasterData'
@@ -16,7 +16,6 @@ export interface MasterPageConfig<T extends MasterItem> {
   fields: FieldDef[]
   queryParams?: string
   rowWarning?: (item: T) => string | null
-  /** 追加ダイアログを開く前に外部で値を確定させたい場合（中分類の親ID連携など） */
   prepareCreate?: () => Record<string, any>
 }
 
@@ -25,42 +24,23 @@ interface MasterPageShellProps<T extends MasterItem> {
   isAdmin: boolean
 }
 
-/**
- * マスタ管理ページ共通シェル
- * フィールド設定オブジェクトを渡すだけで全マスタ画面を生成できる
- */
 export function MasterPageShell<T extends MasterItem>({
   config, isAdmin,
 }: MasterPageShellProps<T>) {
-  const { items, loading, create, update, toggleActive, reorder } = useMasterData<T>({
-    apiPath: config.apiPath,
-    queryParams: config.queryParams,
-  })
+  const { items, loading, error, fetchAll, create, update, toggleActive, reorder } =
+    useMasterData<T>({ apiPath: config.apiPath, queryParams: config.queryParams })
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<T | null>(null)
 
-  const openCreate = () => {
-    setEditTarget(null)
-    setDialogOpen(true)
-  }
-
-  const openEdit = (item: T) => {
-    setEditTarget(item)
-    setDialogOpen(true)
-  }
+  const openCreate = () => { setEditTarget(null); setDialogOpen(true) }
+  const openEdit = (item: T) => { setEditTarget(item); setDialogOpen(true) }
 
   const handleSubmit = async (values: any): Promise<boolean> => {
-    if (editTarget) {
-      return update(editTarget.id, values)
-    } else {
-      return create(values)
-    }
+    return editTarget ? update(editTarget.id, values) : create(values)
   }
 
-  const initialValues = editTarget
-    ? { ...editTarget }
-    : config.prepareCreate?.() ?? {}
+  const initialValues = editTarget ? { ...editTarget } : config.prepareCreate?.() ?? {}
 
   return (
     <div className="space-y-4">
@@ -88,16 +68,35 @@ export function MasterPageShell<T extends MasterItem>({
         )}
       </div>
 
-      {/* 件数・凡例 */}
-      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-        <span>全 {items.length} 件（有効: {items.filter((i) => i.is_active).length} 件）</span>
-        {isAdmin && (
-          <span className="flex items-center gap-1">
-            <span className="inline-block h-2 w-2 rounded-full bg-muted-foreground/30" />
-            薄い行 = 無効
-          </span>
-        )}
-      </div>
+      {/* エラー表示: APIエラー時に再取得ボタン付きで明示 */}
+      {error && (
+        <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
+          <p className="flex-1 text-sm text-destructive">
+            データの取得に失敗しました: {error}
+          </p>
+          <button
+            onClick={fetchAll}
+            className="inline-flex items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10"
+          >
+            <RefreshCw className="h-3 w-3" />
+            再取得
+          </button>
+        </div>
+      )}
+
+      {/* 件数・凡例（エラーがなければ表示） */}
+      {!error && (
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span>全 {items.length} 件（有効: {items.filter((i) => i.is_active).length} 件）</span>
+          {isAdmin && (
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-2 w-2 rounded-full bg-muted-foreground/30" />
+              薄い行 = 無効
+            </span>
+          )}
+        </div>
+      )}
 
       {/* テーブル */}
       <MasterTable

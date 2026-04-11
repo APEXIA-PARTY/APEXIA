@@ -44,13 +44,13 @@ function FileTypeIcon({ mimeType }: { mimeType: string | null }) {
 interface Props { caseId: string; isEditable: boolean }
 
 export function CaseFilesSection({ caseId, isEditable }: Props) {
-  const [files, setFiles]           = useState<FileWithUrl[]>([])
-  const [loading, setLoading]       = useState(true)
-  const [uploading, setUploading]   = useState(false)
+  const [files, setFiles] = useState<FileWithUrl[]>([])
+  const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
   const [previewFile, setPreviewFile] = useState<FileWithUrl | null>(null)
-  const dropRef         = useRef<HTMLDivElement>(null)
-  const inputRef        = useRef<HTMLInputElement>(null)
-  const layoutInputRef  = useRef<HTMLInputElement>(null)
+  const dropRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const layoutInputRef = useRef<HTMLInputElement>(null)
 
   const fetchFiles = useCallback(async () => {
     const res = await fetch(`/api/cases/${caseId}/files`)
@@ -150,7 +150,7 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
   }
 
   const layoutFiles = files.filter(f => f.file_type === 'レイアウト図')
-  const otherFiles  = files.filter(f => f.file_type !== 'レイアウト図')
+  const otherFiles = files.filter(f => f.file_type !== 'レイアウト図')
 
   if (loading) return <div className="h-24 animate-pulse rounded-lg bg-muted/40" />
 
@@ -179,31 +179,31 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
           {otherFiles.length === 0
             ? <p className="text-center text-sm text-muted-foreground py-2">ファイルがありません</p>
             : <div className="space-y-2">
-                {otherFiles.map(f => (
-                  <div key={f.id} className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3">
-                    <button onClick={() => openPreview(f)} className="shrink-0 hover:opacity-70" title="プレビュー">
-                      <FileTypeIcon mimeType={f.mime_type} />
-                    </button>
-                    <div className="flex-1 min-w-0">
-                      <button onClick={() => openPreview(f)} className="block text-sm font-medium truncate hover:underline text-left">{f.file_name}</button>
-                      <p className="text-xs text-muted-foreground">{formatDateTime(f.created_at)}{f.file_size ? ` · ${formatSize(f.file_size)}` : ''}</p>
-                    </div>
-                    {isEditable ? (
-                      <select value={f.file_type} onChange={e => updateFileType(f.id, e.target.value as FileType)} className="rounded border border-input bg-background px-2 py-1 text-xs">
-                        {FILE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                      </select>
-                    ) : (
-                      <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-xs text-muted-foreground">{f.file_type}</span>
-                    )}
-                    <button onClick={() => handleDownload(f)} disabled={f.urlLoading} className="shrink-0 rounded p-1 text-muted-foreground hover:text-primary disabled:opacity-50" title="ダウンロード">
-                      {f.urlLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                    </button>
-                    {isEditable && (
-                      <button onClick={() => deleteFile(f)} className="shrink-0 rounded p-1 text-muted-foreground hover:text-destructive" title="削除"><Trash2 className="h-4 w-4" /></button>
-                    )}
+              {otherFiles.map(f => (
+                <div key={f.id} className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3">
+                  <button onClick={() => openPreview(f)} className="shrink-0 hover:opacity-70" title="プレビュー">
+                    <FileTypeIcon mimeType={f.mime_type} />
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <button onClick={() => openPreview(f)} className="block text-sm font-medium truncate hover:underline text-left">{f.file_name}</button>
+                    <p className="text-xs text-muted-foreground">{formatDateTime(f.created_at)}{f.file_size ? ` · ${formatSize(f.file_size)}` : ''}</p>
                   </div>
-                ))}
-              </div>
+                  {isEditable ? (
+                    <select value={f.file_type} onChange={e => updateFileType(f.id, e.target.value as FileType)} className="rounded border border-input bg-background px-2 py-1 text-xs">
+                      {FILE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  ) : (
+                    <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-xs text-muted-foreground">{f.file_type}</span>
+                  )}
+                  <button onClick={() => handleDownload(f)} disabled={f.urlLoading} className="shrink-0 rounded p-1 text-muted-foreground hover:text-primary disabled:opacity-50" title="ダウンロード">
+                    {f.urlLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  </button>
+                  {isEditable && (
+                    <button onClick={() => deleteFile(f)} className="shrink-0 rounded p-1 text-muted-foreground hover:text-destructive" title="削除"><Trash2 className="h-4 w-4" /></button>
+                  )}
+                </div>
+              ))}
+            </div>
           }
         </div>
       </section>
@@ -229,14 +229,14 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
           {layoutFiles.length === 0
             ? <p className="text-center text-sm text-muted-foreground py-2">レイアウト図がありません</p>
             : <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {layoutFiles.map(f => (
-                  <LayoutCard key={f.id} file={f} isEditable={isEditable}
-                    onPreview={() => openPreview(f)}
-                    onLabelChange={label => updateLabel(f.id, label)}
-                    onDelete={() => deleteFile(f)}
-                    onFetchUrl={() => fetchSignedUrl(f.id)} />
-                ))}
-              </div>
+              {layoutFiles.map(f => (
+                <LayoutCard key={f.id} file={f} isEditable={isEditable}
+                  onPreview={() => openPreview(f)}
+                  onLabelChange={label => updateLabel(f.id, label)}
+                  onDelete={() => deleteFile(f)}
+                  onFetchUrl={() => fetchSignedUrl(f.id)} />
+              ))}
+            </div>
           }
         </div>
       </section>
@@ -254,10 +254,13 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
               </div>
             </div>
             <div className="flex-1 overflow-auto">
-              {!previewFile.signedUrl ? <div className="flex h-48 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-                : previewFile.mime_type?.startsWith('image/') ? <img src={previewFile.signedUrl} alt={previewFile.file_name} className="max-h-[75vh] w-full object-contain" />
-                : previewFile.mime_type === 'application/pdf' ? <iframe src={previewFile.signedUrl} className="h-[75vh] w-full" title={previewFile.file_name} />
-                : <div className="flex h-48 flex-col items-center justify-center gap-3"><File className="h-12 w-12 text-muted-foreground/40" /><p className="text-sm text-muted-foreground">{previewFile.file_name}</p><button onClick={() => handleDownload(previewFile)} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90">ダウンロード</button></div>
+              {!previewFile.signedUrl
+                ? <div className="flex h-48 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+                : previewFile.mime_type?.startsWith('image/')
+                  ? <img src={previewFile.signedUrl} alt={previewFile.file_name} className="max-h-[75vh] w-full object-contain" />
+                  : previewFile.mime_type === 'application/pdf'
+                    ? <iframe src={previewFile.signedUrl} className="h-[75vh] w-full" title={previewFile.file_name} />
+                    : <div className="flex h-48 flex-col items-center justify-center gap-3"><File className="h-12 w-12 text-muted-foreground/40" /><p className="text-sm text-muted-foreground">{previewFile.file_name}</p><button onClick={() => handleDownload(previewFile)} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90">ダウンロード</button></div>
               }
             </div>
           </div>
@@ -275,37 +278,86 @@ function LayoutCard({ file, isEditable, onPreview, onLabelChange, onDelete, onFe
   const [thumbUrl, setThumbUrl] = useState<string | null>(file.signedUrl ?? null)
   const [thumbLoading, setThumbLoading] = useState(false)
 
+  const isImage = file.mime_type?.startsWith('image/')
+  const isPdf = file.mime_type === 'application/pdf'
+
+  // 画像・PDF どちらもマウント時に署名付きURLを自動取得
   useEffect(() => {
-    if (file.mime_type?.startsWith('image/') && !thumbUrl) {
+    if (!thumbUrl) {
       setThumbLoading(true)
       onFetchUrl().then(url => { setThumbUrl(url); setThumbLoading(false) })
     }
   }, []) // eslint-disable-line
 
-  const isImage = file.mime_type?.startsWith('image/')
-  const isPdf   = file.mime_type === 'application/pdf'
+  const thumb = () => {
+    if (thumbLoading) {
+      return (
+        <div className="flex h-36 items-center justify-center bg-muted/40">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      )
+    }
+
+    // 画像: img でサムネイル表示
+    if (isImage) {
+      return thumbUrl
+        ? <img src={thumbUrl} alt={file.label ?? file.file_name} className="h-36 w-full object-cover" />
+        : <div className="flex h-36 items-center justify-center bg-muted/40"><ImageIcon className="h-8 w-8 text-muted-foreground/40" /></div>
+    }
+
+    // PDF: embed でインラインプレビュー（URL取得済みのみ）
+    if (isPdf) {
+      return thumbUrl ? (
+        <div className="relative h-36 w-full overflow-hidden bg-gray-50">
+          <embed
+            src={`${thumbUrl}#toolbar=0&navpanes=0&scrollbar=0&view=Fit`}
+            type="application/pdf"
+            className="h-[200%] w-full"
+            style={{ transform: 'scale(0.5)', transformOrigin: 'top left', width: '200%', pointerEvents: 'none' }}
+          />
+          <span className="absolute bottom-1 right-1.5 rounded bg-red-600/80 px-1.5 py-0.5 text-[10px] font-semibold text-white">PDF</span>
+        </div>
+      ) : (
+        <div className="flex h-36 flex-col items-center justify-center gap-1 bg-red-50">
+          <FileText className="h-8 w-8 text-red-400" />
+          <span className="text-xs font-semibold text-red-600">PDF</span>
+        </div>
+      )
+    }
+
+    // その他
+    return (
+      <div className="flex h-36 items-center justify-center bg-muted/40">
+        <File className="h-8 w-8 text-muted-foreground/40" />
+      </div>
+    )
+  }
 
   return (
     <div className="group relative rounded-lg border border-border bg-muted/20 overflow-hidden">
-      <button onClick={onPreview} className="block w-full" title="プレビュー">
-        {isImage ? (
-          thumbLoading ? <div className="flex h-32 items-center justify-center bg-muted/40"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-          : thumbUrl ? <img src={thumbUrl} alt={file.label ?? file.file_name} className="h-32 w-full object-cover" />
-          : <div className="flex h-32 items-center justify-center bg-muted/40"><ImageIcon className="h-8 w-8 text-muted-foreground/40" /></div>
-        ) : isPdf ? (
-          <div className="flex h-32 flex-col items-center justify-center gap-1 bg-red-50"><FileText className="h-8 w-8 text-red-400" /><span className="text-xs font-semibold text-red-600">PDF</span></div>
-        ) : (
-          <div className="flex h-32 items-center justify-center bg-muted/40"><File className="h-8 w-8 text-muted-foreground/40" /></div>
-        )}
+      <button onClick={onPreview} className="block w-full text-left" title="クリックして拡大プレビュー">
+        {thumb()}
       </button>
       <div className="px-2 py-1.5">
         {isEditable
-          ? <input className="w-full rounded border-0 bg-transparent px-1 py-0.5 text-xs text-muted-foreground placeholder:text-muted-foreground/40 focus:bg-muted/50 focus:outline-none" defaultValue={file.label ?? ''} placeholder="ラベル（例: 7F用）" onBlur={e => onLabelChange(e.target.value)} />
-          : <p className="px-1 text-xs font-medium">{file.label || <span className="text-muted-foreground/50">{file.file_name}</span>}</p>
+          ? <input
+            className="w-full rounded border-0 bg-transparent px-1 py-0.5 text-xs text-muted-foreground placeholder:text-muted-foreground/40 focus:bg-muted/50 focus:outline-none"
+            defaultValue={file.label ?? ''}
+            placeholder="ラベル（例: 7F用）"
+            onBlur={e => onLabelChange(e.target.value)}
+          />
+          : <p className="px-1 text-xs font-medium">
+            {file.label || <span className="text-muted-foreground/50">{file.file_name}</span>}
+          </p>
         }
       </div>
       {isEditable && (
-        <button onClick={onDelete} className="absolute right-1.5 top-1.5 rounded bg-black/50 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-destructive"><Trash2 className="h-3 w-3" /></button>
+        <button
+          onClick={onDelete}
+          className="absolute right-1.5 top-1.5 rounded bg-black/50 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-destructive"
+        >
+          <Trash2 className="h-3 w-3" />
+        </button>
       )}
     </div>
   )
