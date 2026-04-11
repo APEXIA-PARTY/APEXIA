@@ -298,7 +298,7 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
     : <option value="">選択してください</option>
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
 
       {/* ① 基本情報 */}
       <section className={sec}>
@@ -349,7 +349,9 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
             <label className={lbl}>予定参加人数</label>
             <div className="relative">
               <input
-                {...register('guest_count', { valueAsNumber: true })}
+                {...register('guest_count', {
+                  setValueAs: (v: string) => v === '' ? undefined : Number(v),
+                })}
                 type="number"
                 min="0"
                 className={`${inp} pr-8`}
@@ -409,19 +411,41 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
             )}
           </div>
           <div>
-            {/* B. 見積金額: ¥プレフィックス表示 */}
+            {/* B. 見積金額: ¥ + 3桁カンマ表示、DB保存は数値 */}
             <label className={lbl}>見積金額（税込）</label>
-            <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">¥</span>
-              <input
-                {...register('estimate_amount', { valueAsNumber: true })}
-                type="number"
-                min="0"
-                step="1"
-                className={`${inp} pl-7`}
-                placeholder="0"
-              />
-            </div>
+            <Controller
+              name="estimate_amount"
+              control={control}
+              render={({ field }) => {
+                // 表示用: 数値 → カンマ区切り文字列
+                const displayValue =
+                  field.value !== undefined && field.value !== null && !isNaN(Number(field.value))
+                    ? Number(field.value).toLocaleString('ja-JP')
+                    : ''
+                return (
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">¥</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={displayValue}
+                      onChange={(e) => {
+                        // カンマ・空白を除去して数値化
+                        const raw = e.target.value.replace(/[,，\s]/g, '')
+                        if (raw === '') {
+                          field.onChange(0)
+                        } else {
+                          const n = Number(raw)
+                          if (!isNaN(n) && n >= 0) field.onChange(n)
+                        }
+                      }}
+                      className={`${inp} pl-7`}
+                      placeholder="0"
+                    />
+                  </div>
+                )
+              }}
+            />
           </div>
         </div>
 
