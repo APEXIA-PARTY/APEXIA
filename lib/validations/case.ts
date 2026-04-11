@@ -41,6 +41,9 @@ const optionalUuid = emptyToNull(z.string().uuid().nullable().optional())
  */
 const optionalTime = z.preprocess((val) => {
   if (val === '' || val === undefined || val === null) return null
+  if (typeof val === 'string' && /^\d{2}:\d{2}:\d{2}$/.test(val)) {
+    return val.slice(0, 5)
+  }
   return val
 },
   z.string()
