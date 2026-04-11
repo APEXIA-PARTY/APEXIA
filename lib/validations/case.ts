@@ -10,7 +10,7 @@ const emptyToNull = <T extends z.ZodTypeAny>(schema: T) =>
  * 空文字を undefined に変える
  */
 const emptyToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
-  z.preprocess((val) => (val === '' ? undefined : val), schema)
+  z.preprocess((val) => (val === '' || val === null ? undefined : val), schema)
 
 /**
  * 数字入力用
