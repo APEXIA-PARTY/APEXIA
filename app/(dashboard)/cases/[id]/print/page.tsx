@@ -19,7 +19,6 @@ interface LayoutFileWithUrl {
   mime_type: string | null
   storage_path: string
   label: string | null
-  /** 印刷ページで表示に使うURL（画像 / PDF ともに使用） */
   displayUrl: string | null
   isPdf: boolean
 }
@@ -37,6 +36,7 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
   const {
     data: { user },
   } = await supabase.auth.getUser()
+
   if (!user) redirect('/login')
 
   const { data: c, error } = await supabase
@@ -86,9 +86,7 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
   const pending = checklist.filter((i) => i.state === '確認中')
   const confirmed = checklist.filter((i) => i.state === '確定')
 
-  // ─── レイアウト図: SSR で表示用URLを解決する ─────────────────
-  // 画像: 署名付きURL or data URL
-  // PDF : 署名付きURL or data URL を取得して iframe/object で表示
+  // レイアウト図: 画像 / PDF ともに表示用URLを取得
   const rawLayouts = ((c.case_files as any[]) ?? []).filter((f) => f.file_type === 'レイアウト図')
   const layouts: LayoutFileWithUrl[] = await Promise.all(
     rawLayouts.map(async (f): Promise<LayoutFileWithUrl> => {
@@ -115,16 +113,23 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
   const detailUrl = `${appUrl}/cases/${params.id}`
+  const issueDate = formatDate(new Date().toISOString())
 
   const printStyles = `
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: #fff;
+    }
+
     body {
       font-family: 'Noto Sans JP', 'Hiragino Sans', Meiryo, sans-serif;
       font-size: 9pt;
       color: #1a1a1a;
-      background: #fff;
     }
+
     .page {
       width: 210mm;
       min-height: 297mm;
@@ -132,13 +137,49 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
       margin: 0 auto;
       background: #fff;
     }
+
     @media print {
-      @page { size: A4 portrait; margin: 0; }
-      html, body { width: 210mm; }
-      .page { padding: 12mm 15mm; page-break-after: always; }
-      .no-print { display: none !important; }
-      .page-break { page-break-before: always; }
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+
+      html, body {
+        width: 210mm;
+        background: #fff !important;
+      }
+
+      /* 画面内の他UIを印刷させない */
+      body > * {
+        visibility: hidden !important;
+      }
+
+      #print-root,
+      #print-root * {
+        visibility: visible !important;
+      }
+
+      #print-root {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 210mm;
+      }
+
+      .page {
+        padding: 12mm 15mm;
+        page-break-after: always;
+      }
+
+      .no-print {
+        display: none !important;
+      }
+
+      .page-break {
+        page-break-before: always;
+      }
     }
+
     .header {
       border-bottom: 2px solid #1a1a1a;
       padding-bottom: 6pt;
@@ -147,11 +188,13 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
       justify-content: space-between;
       align-items: flex-end;
     }
+
     .logo { font-size: 20pt; font-weight: 700; letter-spacing: 2pt; }
     .doc-title { font-size: 14pt; font-weight: 700; }
     .issue-date { font-size: 8pt; color: #666; }
 
     .section { margin-bottom: 12pt; }
+
     .section-title {
       font-size: 9pt;
       font-weight: 700;
@@ -161,109 +204,165 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
       margin-bottom: 6pt;
     }
 
-    table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
-    th, td { border: 0.5pt solid #bbb; padding: 3pt 5pt; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8.5pt;
+    }
+
+    th, td {
+      border: 0.5pt solid #bbb;
+      padding: 3pt 5pt;
+    }
+
     th {
       background: #f0f0ee;
       font-weight: 600;
       text-align: left;
       white-space: nowrap;
     }
-    td.num { text-align: right; font-variant-numeric: tabular-nums; }
-    td.center { text-align: center; }
+
+    td.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    td.center {
+      text-align: center;
+    }
 
     .info-grid {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
       gap: 5pt;
     }
-    .info-item { border: 0.5pt solid #ddd; padding: 4pt 6pt; }
-    .info-label { font-size: 7pt; color: #888; margin-bottom: 2pt; }
-    .info-value { font-size: 9pt; font-weight: 500; }
 
-    .timeline { display: flex; flex-wrap: wrap; gap: 5pt; }
+    .info-item {
+      border: 0.5pt solid #ddd;
+      padding: 4pt 6pt;
+    }
+
+    .info-label {
+      font-size: 7pt;
+      color: #888;
+      margin-bottom: 2pt;
+    }
+
+    .info-value {
+      font-size: 9pt;
+      font-weight: 500;
+    }
+
+    .timeline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5pt;
+    }
+
     .time-item {
       border: 0.5pt solid #ddd;
       padding: 4pt 8pt;
       text-align: center;
       min-width: 70pt;
     }
-    .time-label { font-size: 7pt; color: #888; }
+
+    .time-label {
+      font-size: 7pt;
+      color: #888;
+    }
+
     .time-value {
       font-size: 10pt;
       font-weight: 600;
       font-variant-numeric: tabular-nums;
     }
 
-    .check-list { list-style: none; }
+    .check-list {
+      list-style: none;
+    }
+
     .check-list li {
       padding: 2pt 0;
       border-bottom: 0.3pt solid #eee;
       font-size: 8.5pt;
     }
-    .check-list li::before { content: '□ '; color: #888; }
-    .check-list li.confirmed::before { content: '✓ '; color: #375623; }
 
-    .layout-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8pt; }
-    .layout-item img,
-    .layout-item iframe,
-    .layout-item object {
+    .check-list li::before {
+      content: '□ ';
+      color: #888;
+    }
+
+    .check-list li.confirmed::before {
+      content: '✓ ';
+      color: #375623;
+    }
+
+    /* レイアウト図 */
+    .layout-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10pt;
+    }
+
+    .layout-item img {
       width: 100%;
-      height: 180pt;
+      height: auto;
+      max-height: none;
       object-fit: contain;
       border: 0.5pt solid #ddd;
       background: #fff;
+      display: block;
     }
-    .layout-label {
-      font-size: 7.5pt;
-      text-align: center;
-      margin-top: 2pt;
-      font-weight: 500;
-      word-break: break-all;
-    }
+
     .pdf-box {
       width: 100%;
-      height: 180pt;
+      height: 620pt;
       border: 0.5pt solid #ddd;
       background: #fff;
       overflow: hidden;
     }
 
-    .footer {
-      border-top: 0.5pt solid #bbb;
-      margin-top: 16pt;
-      padding-top: 10pt;
+    .layout-item iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #fff;
+      display: block;
     }
-    .signature-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 10pt;
-    }
-    .signature-box {
-      border: 0.5pt solid #bbb;
-      padding: 6pt 8pt;
-      min-height: 40pt;
-    }
-    .signature-label { font-size: 7pt; color: #888; margin-bottom: 4pt; }
 
-    .total-row td { background: #f7f6f2; font-weight: 600; }
+    .layout-label {
+      font-size: 7.5pt;
+      text-align: center;
+      margin-top: 4pt;
+      font-weight: 500;
+      word-break: break-all;
+    }
+
+    .total-row td {
+      background: #f7f6f2;
+      font-weight: 600;
+    }
+
     .detail-url {
       font-size: 7pt;
       color: #4472C4;
       word-break: break-all;
     }
+
     .subsection-label {
       font-weight: 600;
       font-size: 8pt;
       margin-bottom: 3pt;
       color: #555;
     }
+
     .summary-box {
       border: 0.5pt solid #bbb;
       background: #faf9f5;
       padding: 6pt 8pt;
       margin-top: 8pt;
     }
+
     .summary-row {
       display: flex;
       justify-content: space-between;
@@ -271,6 +370,7 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
       padding: 2pt 0;
       font-size: 8.5pt;
     }
+
     .summary-row.total {
       border-top: 0.5pt solid #bbb;
       margin-top: 4pt;
@@ -280,8 +380,6 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
     }
   `
 
-  const issueDate = formatDate(new Date().toISOString())
-
   return (
     <html lang="ja">
       <head>
@@ -290,7 +388,9 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
         <title>イベント確認表 - {c.company}</title>
         <style dangerouslySetInnerHTML={{ __html: printStyles }} />
       </head>
+
       <body>
+        {/* 画面用ボタン（印刷には出さない） */}
         <div
           className="no-print"
           style={{
@@ -319,7 +419,7 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
           <PrintTrigger />
         </div>
 
-        <div className="page">
+        <div id="print-root" className="page">
           {/* ヘッダー */}
           <div className="header">
             <div>
@@ -395,6 +495,7 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
                 <div className="info-value">{(c.contact_method_master as any)?.name ?? '—'}</div>
               </div>
             </div>
+
             {c.notes && (
               <div
                 style={{
@@ -440,7 +541,9 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
                   <th style={{ width: '25%' }}>下見日時</th>
                   <td>{c.preview_datetime ? formatDateTime(c.preview_datetime) : '—'}</td>
                   <th style={{ width: '20%' }}>見積金額（税込）</th>
-                  <td className="num">{c.estimate_amount > 0 ? formatCurrency(c.estimate_amount) : '—'}</td>
+                  <td className="num">
+                    {c.estimate_amount > 0 ? formatCurrency(c.estimate_amount) : '—'}
+                  </td>
                 </tr>
                 <tr>
                   <th>申込みフォーム</th>
@@ -476,10 +579,16 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
                   {equipment.map((e: any) => (
                     <tr key={e.id}>
                       <td>{e.name}</td>
-                      <td className="center">{e.qty} {e.unit}</td>
-                      <td className="num">{e.unit_price > 0 ? formatCurrency(e.unit_price) : '—'}</td>
+                      <td className="center">
+                        {e.qty} {e.unit}
+                      </td>
                       <td className="num">
-                        {calcTaxIncludedAmount(e) > 0 ? formatCurrency(calcTaxIncludedAmount(e)) : '—'}
+                        {e.unit_price > 0 ? formatCurrency(e.unit_price) : '—'}
+                      </td>
+                      <td className="num">
+                        {calcTaxIncludedAmount(e) > 0
+                          ? formatCurrency(calcTaxIncludedAmount(e))
+                          : '—'}
                       </td>
                       <td className="center">{e.state}</td>
                     </tr>
@@ -498,6 +607,7 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
           {machines.some((m) => m.items.length > 0) && (
             <div className="section">
               <div className="section-title">⑤ 機材・オペレーター</div>
+
               {machines
                 .filter((m) => m.items.length > 0)
                 .map(({ cat, items }) => {
@@ -523,10 +633,16 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
                           {items.map((e: any) => (
                             <tr key={e.id}>
                               <td>{e.name}</td>
-                              <td className="center">{e.qty} {e.unit}</td>
-                              <td className="num">{e.unit_price > 0 ? formatCurrency(e.unit_price) : '—'}</td>
+                              <td className="center">
+                                {e.qty} {e.unit}
+                              </td>
                               <td className="num">
-                                {calcTaxIncludedAmount(e) > 0 ? formatCurrency(calcTaxIncludedAmount(e)) : '—'}
+                                {e.unit_price > 0 ? formatCurrency(e.unit_price) : '—'}
+                              </td>
+                              <td className="num">
+                                {calcTaxIncludedAmount(e) > 0
+                                  ? formatCurrency(calcTaxIncludedAmount(e))
+                                  : '—'}
                               </td>
                               <td className="center">{e.state}</td>
                             </tr>
@@ -543,7 +659,7 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
                 })}
 
               <div className="summary-box">
-                <div className="summary-row">
+                <div className="summary-row total">
                   <span>機材・オペレーター合計（税込）</span>
                   <span>{formatCurrency(machineTotalInclTax)}</span>
                 </div>
