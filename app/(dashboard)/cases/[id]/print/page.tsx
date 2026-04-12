@@ -121,6 +121,8 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     html, body {
+      margin: 0;
+      padding: 0;
       background: #fff;
     }
 
@@ -128,6 +130,16 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
       font-family: 'Noto Sans JP', 'Hiragino Sans', Meiryo, sans-serif;
       font-size: 9pt;
       color: #1a1a1a;
+      background: #fff;
+    }
+
+    /* 画面上でも他UIを隠す */
+    #print-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      overflow: auto;
+      background: #fff;
     }
 
     .page {
@@ -149,21 +161,11 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
         background: #fff !important;
       }
 
-      /* 画面内の他UIを印刷させない */
-      body > * {
-        visibility: hidden !important;
-      }
-
-      #print-root,
-      #print-root * {
-        visibility: visible !important;
-      }
-
-      #print-root {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 210mm;
+      #print-screen {
+        position: static;
+        inset: auto;
+        overflow: visible;
+        background: #fff;
       }
 
       .page {
@@ -176,7 +178,7 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
       }
 
       .page-break {
-        page-break-before: always;
+        page-break-before: auto;
       }
     }
 
@@ -297,15 +299,21 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
       color: #375623;
     }
 
-    /* レイアウト図 */
     .layout-grid {
       display: grid;
       grid-template-columns: 1fr;
       gap: 10pt;
     }
 
+    .layout-item {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
     .layout-item img {
       width: 100%;
+      max-width: 176mm;
+      margin: 0 auto;
       height: auto;
       max-height: none;
       object-fit: contain;
@@ -316,7 +324,9 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
 
     .pdf-box {
       width: 100%;
-      height: 620pt;
+      max-width: 176mm;
+      margin: 0 auto;
+      aspect-ratio: 210 / 297;
       border: 0.5pt solid #ddd;
       background: #fff;
       overflow: hidden;
@@ -390,440 +400,422 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
       </head>
 
       <body>
-        {/* 画面用ボタン（印刷には出さない） */}
-        <div
-          className="no-print"
-          style={{
-            position: 'fixed',
-            top: 16,
-            right: 16,
-            zIndex: 100,
-            display: 'flex',
-            gap: 8,
-          }}
-        >
-          <a
-            href={`/cases/${params.id}`}
+        <div id="print-screen">
+          <div
+            className="no-print"
             style={{
-              padding: '8px 16px',
-              background: '#fff',
-              border: '1px solid #ccc',
-              borderRadius: 6,
-              textDecoration: 'none',
-              fontSize: 13,
-              color: '#333',
+              position: 'fixed',
+              top: 16,
+              right: 16,
+              zIndex: 100,
+              display: 'flex',
+              gap: 8,
             }}
           >
-            ← 詳細に戻る
-          </a>
-          <PrintTrigger />
-        </div>
-
-        <div id="print-root" className="page">
-          {/* ヘッダー */}
-          <div className="header">
-            <div>
-              <div className="logo">APEXIA</div>
-              <div className="doc-title">イベント確認表</div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div className="issue-date">発行日: {issueDate}</div>
-              <div className="detail-url">案件URL: {detailUrl}</div>
-            </div>
+            <a
+              href={`/cases/${params.id}`}
+              style={{
+                padding: '8px 16px',
+                background: '#fff',
+                border: '1px solid #ccc',
+                borderRadius: 6,
+                textDecoration: 'none',
+                fontSize: 13,
+                color: '#333',
+              }}
+            >
+              ← 詳細に戻る
+            </a>
+            <PrintTrigger />
           </div>
 
-          {/* ① 基本情報 */}
-          <div className="section">
-            <div className="section-title">① 基本情報</div>
-            <div className="info-grid">
-              <div className="info-item">
-                <div className="info-label">会社名 / 団体名</div>
-                <div className="info-value">{emptyToDash(c.company)}</div>
+          <div id="print-root" className="page">
+            {/* ヘッダー */}
+            <div className="header">
+              <div>
+                <div className="logo">APEXIA</div>
+                <div className="doc-title">イベント確認表</div>
               </div>
-              <div className="info-item">
-                <div className="info-label">担当者名</div>
-                <div className="info-value">{emptyToDash(c.contact)}</div>
-              </div>
-              <div className="info-item">
-                <div className="info-label">電話番号</div>
-                <div className="info-value">{emptyToDash(c.phone)}</div>
-              </div>
-              <div className="info-item">
-                <div className="info-label">メール</div>
-                <div className="info-value" style={{ fontSize: '8pt', wordBreak: 'break-all' }}>
-                  {emptyToDash(c.email)}
-                </div>
-              </div>
-              <div className="info-item">
-                <div className="info-label">問合せ日</div>
-                <div className="info-value">{formatDate(c.inquiry_date)}</div>
-              </div>
-              <div className="info-item">
-                <div className="info-label">開催日</div>
-                <div className="info-value">{formatDate(c.event_date)}</div>
-              </div>
-              <div className="info-item" style={{ gridColumn: 'span 2' }}>
-                <div className="info-label">イベント名</div>
-                <div className="info-value">{emptyToDash(c.event_name)}</div>
-              </div>
-              <div className="info-item">
-                <div className="info-label">予定参加人数</div>
-                <div className="info-value">{c.guest_count ? `${c.guest_count} 名` : '—'}</div>
-              </div>
-              <div className="info-item">
-                <div className="info-label">フロア</div>
-                <div className="info-value">{(c.floor_master as any)?.name ?? '—'}</div>
-              </div>
-              <div className="info-item">
-                <div className="info-label">イベント大分類</div>
-                <div className="info-value">{(c.event_category_master as any)?.name ?? '—'}</div>
-              </div>
-              <div className="info-item">
-                <div className="info-label">イベント中分類</div>
-                <div className="info-value">
-                  {(c.event_subcategory_master as any)?.name === 'その他' && c.event_subcategory_note
-                    ? `その他（${c.event_subcategory_note}）`
-                    : ((c.event_subcategory_master as any)?.name ?? '—')}
-                </div>
-              </div>
-              <div className="info-item">
-                <div className="info-label">認知経路</div>
-                <div className="info-value">{(c.media_master as any)?.name ?? '—'}</div>
-              </div>
-              <div className="info-item">
-                <div className="info-label">連絡方法</div>
-                <div className="info-value">{(c.contact_method_master as any)?.name ?? '—'}</div>
+              <div style={{ textAlign: 'right' }}>
+                <div className="issue-date">発行日: {issueDate}</div>
+                <div className="detail-url">案件URL: {detailUrl}</div>
               </div>
             </div>
 
-            {c.notes && (
-              <div
-                style={{
-                  marginTop: 6,
-                  border: '0.5pt solid #ddd',
-                  padding: '4pt 6pt',
-                  fontSize: '8.5pt',
-                }}
-              >
-                <span style={{ color: '#888', fontSize: '7pt' }}>備考: </span>
-                {c.notes}
-              </div>
-            )}
-          </div>
-
-          {/* ② タイムスケジュール */}
-          <div className="section">
-            <div className="section-title">② タイムスケジュール</div>
-            <div className="timeline">
-              {[
-                ['入り', c.load_in_time],
-                ['搬入 / 準備', c.setup_time],
-                ['リハ', c.rehearsal_time],
-                ['開始', c.start_time],
-                ['終了', c.end_time],
-                ['片付け / 撤収', c.strike_time],
-                ['完全撤収', c.full_exit_time],
-              ].map(([label, time]) => (
-                <div key={label as string} className="time-item">
-                  <div className="time-label">{label}</div>
-                  <div className="time-value">{time ? formatTime(time as string) : '——'}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ③ 確認手続き */}
-          <div className="section">
-            <div className="section-title">③ 確認手続き</div>
-            <table>
-              <tbody>
-                <tr>
-                  <th style={{ width: '25%' }}>下見日時</th>
-                  <td>{c.preview_datetime ? formatDateTime(c.preview_datetime) : '—'}</td>
-                  <th style={{ width: '20%' }}>見積金額（税込）</th>
-                  <td className="num">
-                    {c.estimate_amount > 0 ? formatCurrency(c.estimate_amount) : '—'}
-                  </td>
-                </tr>
-                <tr>
-                  <th>申込みフォーム</th>
-                  <td>{c.application_form_status}</td>
-                  <th>搬入出届</th>
-                  <td>{c.delivery_notice_status}</td>
-                </tr>
-                <tr>
-                  <th>請求書</th>
-                  <td>{c.invoice_status}</td>
-                  <th>支払い方法</th>
-                  <td>{c.payment_method ?? '—'}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* ④ 備品・設備 */}
-          {equipment.length > 0 && (
+            {/* ① 基本情報 */}
             <div className="section">
-              <div className="section-title">④ 備品・設備明細</div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>内容</th>
-                    <th className="center" style={{ width: 60 }}>数量</th>
-                    <th className="num" style={{ width: 80 }}>単価（税抜）</th>
-                    <th className="num" style={{ width: 85 }}>金額（税込）</th>
-                    <th className="center" style={{ width: 60 }}>状態</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {equipment.map((e: any) => (
-                    <tr key={e.id}>
-                      <td>{e.name}</td>
-                      <td className="center">
-                        {e.qty} {e.unit}
-                      </td>
-                      <td className="num">
-                        {e.unit_price > 0 ? formatCurrency(e.unit_price) : '—'}
-                      </td>
-                      <td className="num">
-                        {calcTaxIncludedAmount(e) > 0
-                          ? formatCurrency(calcTaxIncludedAmount(e))
-                          : '—'}
-                      </td>
-                      <td className="center">{e.state}</td>
-                    </tr>
-                  ))}
-                  <tr className="total-row">
-                    <td colSpan={3}>合計（税込）</td>
-                    <td className="num">{formatCurrency(equipmentTotalInclTax)}</td>
-                    <td />
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* ⑤ 機材・オペレーター */}
-          {machines.some((m) => m.items.length > 0) && (
-            <div className="section">
-              <div className="section-title">⑤ 機材・オペレーター</div>
-
-              {machines
-                .filter((m) => m.items.length > 0)
-                .map(({ cat, items }) => {
-                  const catTotalInclTax = items.reduce(
-                    (sum: number, e: any) => sum + calcTaxIncludedAmount(e),
-                    0
-                  )
-
-                  return (
-                    <div key={cat} style={{ marginBottom: 8 }}>
-                      <div className="subsection-label">{cat}</div>
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>内容</th>
-                            <th className="center" style={{ width: 60 }}>数量</th>
-                            <th className="num" style={{ width: 80 }}>単価（税抜）</th>
-                            <th className="num" style={{ width: 85 }}>金額（税込）</th>
-                            <th className="center" style={{ width: 60 }}>状態</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {items.map((e: any) => (
-                            <tr key={e.id}>
-                              <td>{e.name}</td>
-                              <td className="center">
-                                {e.qty} {e.unit}
-                              </td>
-                              <td className="num">
-                                {e.unit_price > 0 ? formatCurrency(e.unit_price) : '—'}
-                              </td>
-                              <td className="num">
-                                {calcTaxIncludedAmount(e) > 0
-                                  ? formatCurrency(calcTaxIncludedAmount(e))
-                                  : '—'}
-                              </td>
-                              <td className="center">{e.state}</td>
-                            </tr>
-                          ))}
-                          <tr className="total-row">
-                            <td colSpan={3}>{cat} 合計（税込）</td>
-                            <td className="num">{formatCurrency(catTotalInclTax)}</td>
-                            <td />
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  )
-                })}
-
-              <div className="summary-box">
-                <div className="summary-row total">
-                  <span>機材・オペレーター合計（税込）</span>
-                  <span>{formatCurrency(machineTotalInclTax)}</span>
+              <div className="section-title">① 基本情報</div>
+              <div className="info-grid">
+                <div className="info-item">
+                  <div className="info-label">会社名 / 団体名</div>
+                  <div className="info-value">{emptyToDash(c.company)}</div>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* ⑥ 確認事項 */}
-          {checklist.length > 0 && (
-            <div className="section">
-              <div className="section-title">⑥ 確認事項</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {pending.length > 0 && (
-                  <div>
-                    <div
-                      style={{
-                        fontSize: '7.5pt',
-                        fontWeight: 600,
-                        color: '#b45309',
-                        marginBottom: 3,
-                      }}
-                    >
-                      確認中
-                    </div>
-                    <ul className="check-list">
-                      {pending.map((i: any) => (
-                        <li key={i.id}>{i.item}</li>
-                      ))}
-                    </ul>
+                <div className="info-item">
+                  <div className="info-label">担当者名</div>
+                  <div className="info-value">{emptyToDash(c.contact)}</div>
+                </div>
+                <div className="info-item">
+                  <div className="info-label">電話番号</div>
+                  <div className="info-value">{emptyToDash(c.phone)}</div>
+                </div>
+                <div className="info-item">
+                  <div className="info-label">メール</div>
+                  <div className="info-value" style={{ fontSize: '8pt', wordBreak: 'break-all' }}>
+                    {emptyToDash(c.email)}
                   </div>
-                )}
-                {confirmed.length > 0 && (
-                  <div>
-                    <div
-                      style={{
-                        fontSize: '7.5pt',
-                        fontWeight: 600,
-                        color: '#375623',
-                        marginBottom: 3,
-                      }}
-                    >
-                      確定済み
-                    </div>
-                    <ul className="check-list">
-                      {confirmed.map((i: any) => (
-                        <li key={i.id} className="confirmed">
-                          {i.item}
-                        </li>
-                      ))}
-                    </ul>
+                </div>
+                <div className="info-item">
+                  <div className="info-label">問合せ日</div>
+                  <div className="info-value">{formatDate(c.inquiry_date)}</div>
+                </div>
+                <div className="info-item">
+                  <div className="info-label">開催日</div>
+                  <div className="info-value">{formatDate(c.event_date)}</div>
+                </div>
+                <div className="info-item" style={{ gridColumn: 'span 2' }}>
+                  <div className="info-label">イベント名</div>
+                  <div className="info-value">{emptyToDash(c.event_name)}</div>
+                </div>
+                <div className="info-item">
+                  <div className="info-label">予定参加人数</div>
+                  <div className="info-value">{c.guest_count ? `${c.guest_count} 名` : '—'}</div>
+                </div>
+                <div className="info-item">
+                  <div className="info-label">フロア</div>
+                  <div className="info-value">{(c.floor_master as any)?.name ?? '—'}</div>
+                </div>
+                <div className="info-item">
+                  <div className="info-label">イベント大分類</div>
+                  <div className="info-value">{(c.event_category_master as any)?.name ?? '—'}</div>
+                </div>
+                <div className="info-item">
+                  <div className="info-label">イベント中分類</div>
+                  <div className="info-value">
+                    {(c.event_subcategory_master as any)?.name === 'その他' && c.event_subcategory_note
+                      ? `その他（${c.event_subcategory_note}）`
+                      : ((c.event_subcategory_master as any)?.name ?? '—')}
                   </div>
-                )}
+                </div>
+                <div className="info-item">
+                  <div className="info-label">認知経路</div>
+                  <div className="info-value">{(c.media_master as any)?.name ?? '—'}</div>
+                </div>
+                <div className="info-item">
+                  <div className="info-label">連絡方法</div>
+                  <div className="info-value">{(c.contact_method_master as any)?.name ?? '—'}</div>
+                </div>
               </div>
-            </div>
-          )}
 
-          {/* ⑦ の前にオプション合計 */}
-          {(equipment.length > 0 || machines.some((m) => m.items.length > 0)) && (
+              {c.notes && (
+                <div
+                  style={{
+                    marginTop: 6,
+                    border: '0.5pt solid #ddd',
+                    padding: '4pt 6pt',
+                    fontSize: '8.5pt',
+                  }}
+                >
+                  <span style={{ color: '#888', fontSize: '7pt' }}>備考: </span>
+                  {c.notes}
+                </div>
+              )}
+            </div>
+
+            {/* ② タイムスケジュール */}
             <div className="section">
-              <div className="section-title">オプション合計</div>
-              <div className="summary-box">
-                <div className="summary-row">
-                  <span>備品・設備 合計（税込）</span>
-                  <span>{formatCurrency(equipmentTotalInclTax)}</span>
-                </div>
-                <div className="summary-row">
-                  <span>機材・オペレーター 合計（税込）</span>
-                  <span>{formatCurrency(machineTotalInclTax)}</span>
-                </div>
-                <div className="summary-row total">
-                  <span>全オプション合計（税込）</span>
-                  <span>{formatCurrency(optionGrandTotalInclTax)}</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ⑦ レイアウト図 */}
-          {layouts.length > 0 && (
-            <div className="section page-break">
-              <div className="section-title">⑦ レイアウト図</div>
-              <div className="layout-grid">
-                {layouts.map((f) => (
-                  <div key={f.id} className="layout-item">
-                    {f.displayUrl ? (
-                      f.isPdf ? (
-                        <div className="pdf-box">
-                          <iframe
-                            src={`${f.displayUrl}#toolbar=0&navpanes=0&scrollbar=0`}
-                            title={f.label ?? f.file_name}
-                          />
-                        </div>
-                      ) : (
-                        <img src={f.displayUrl} alt={f.label ?? f.file_name} />
-                      )
-                    ) : (
-                      <div
-                        style={{
-                          height: 180,
-                          border: '0.5pt solid #ddd',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 4,
-                          fontSize: 8,
-                          color: '#888',
-                          background: '#fff',
-                        }}
-                      >
-                        <span style={{ fontSize: 16 }}>{f.isPdf ? '📄' : '🖼️'}</span>
-                        <span style={{ fontWeight: 600 }}>{f.file_name}</span>
-                        <span>プレビューを表示できません</span>
-                      </div>
-                    )}
-                    <div className="layout-label">{f.label || f.file_name}</div>
+              <div className="section-title">② タイムスケジュール</div>
+              <div className="timeline">
+                {[
+                  ['入り', c.load_in_time],
+                  ['搬入 / 準備', c.setup_time],
+                  ['リハ', c.rehearsal_time],
+                  ['開始', c.start_time],
+                  ['終了', c.end_time],
+                  ['片付け / 撤収', c.strike_time],
+                  ['完全撤収', c.full_exit_time],
+                ].map(([label, time]) => (
+                  <div key={label as string} className="time-item">
+                    <div className="time-label">{label}</div>
+                    <div className="time-value">{time ? formatTime(time as string) : '——'}</div>
                   </div>
                 ))}
               </div>
             </div>
-          )}
 
-          {/* ⑧ 備考・注意事項 */}
-          <div className="section">
-            <div className="section-title">⑧ 備考・注意事項</div>
-            <table>
-              <tbody>
-                {c.notes && (
+            {/* ③ 確認手続き */}
+            <div className="section">
+              <div className="section-title">③ 確認手続き</div>
+              <table>
+                <tbody>
                   <tr>
-                    <th style={{ width: '15%', verticalAlign: 'top' }}>備考</th>
-                    <td style={{ whiteSpace: 'pre-wrap' }}>{c.notes}</td>
+                    <th style={{ width: '25%' }}>下見日時</th>
+                    <td>{c.preview_datetime ? formatDateTime(c.preview_datetime) : '—'}</td>
+                    <th style={{ width: '20%' }}>見積金額（税込）</th>
+                    <td className="num">
+                      {c.estimate_amount > 0 ? formatCurrency(c.estimate_amount) : '—'}
+                    </td>
                   </tr>
-                )}
-                <tr>
-                  <th style={{ verticalAlign: 'top' }}>注意事項</th>
-                  <td style={{ fontSize: '8pt', color: '#444', lineHeight: 1.6 }}>
-                    ・ステージ上での飲食はお断りしております。また、機材に触れないようご留意くださいませ。<br />
-                    ・1Fの共有部やビル前にたまらないよう、お客様スタッフにて、ご対応をお願い致します。<br />
-                    ・搬入出作業は、B1からのみとなります。1F正面口からは行えません。皆様へ共有お願い致します。<br />
-                    ・一気飲み等、泥酔の可能性がある行為はお断りしております。発生した場合、対応をお願い致します。<br />
-                    ・20:00より8Fステージは復旧作業に入ります。内容によって、早める可能性もございます。<br />
-                    ・当日までのお支払いを、原則、お願いしておりますので、遵守いただくようご留意くださいませ。
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                  <tr>
+                    <th>申込みフォーム</th>
+                    <td>{c.application_form_status}</td>
+                    <th>搬入出届</th>
+                    <td>{c.delivery_notice_status}</td>
+                  </tr>
+                  <tr>
+                    <th>請求書</th>
+                    <td>{c.invoice_status}</td>
+                    <th>支払い方法</th>
+                    <td>{c.payment_method ?? '—'}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
-          {/* フッター確認欄 */}
-          <div className="footer">
-            <div style={{ fontSize: '8pt', fontWeight: 600, marginBottom: 6 }}>確認欄</div>
-            <div className="signature-row">
-              <div className="signature-box">
-                <div className="signature-label">お客様確認</div>
+            {/* ④ 備品・設備 */}
+            {equipment.length > 0 && (
+              <div className="section">
+                <div className="section-title">④ 備品・設備明細</div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>内容</th>
+                      <th className="center" style={{ width: 60 }}>数量</th>
+                      <th className="num" style={{ width: 80 }}>単価（税抜）</th>
+                      <th className="num" style={{ width: 85 }}>金額（税込）</th>
+                      <th className="center" style={{ width: 60 }}>状態</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {equipment.map((e: any) => (
+                      <tr key={e.id}>
+                        <td>{e.name}</td>
+                        <td className="center">
+                          {e.qty} {e.unit}
+                        </td>
+                        <td className="num">
+                          {e.unit_price > 0 ? formatCurrency(e.unit_price) : '—'}
+                        </td>
+                        <td className="num">
+                          {calcTaxIncludedAmount(e) > 0
+                            ? formatCurrency(calcTaxIncludedAmount(e))
+                            : '—'}
+                        </td>
+                        <td className="center">{e.state}</td>
+                      </tr>
+                    ))}
+                    <tr className="total-row">
+                      <td colSpan={3}>合計（税込）</td>
+                      <td className="num">{formatCurrency(equipmentTotalInclTax)}</td>
+                      <td />
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-              <div className="signature-box">
-                <div className="signature-label">担当スタッフ確認</div>
-              </div>
-              <div className="signature-box">
-                <div className="signature-label">APEXIA 管理</div>
-                <div style={{ fontSize: '7pt', color: '#888', marginTop: 3 }}>
-                  確認日: _____ / _____
+            )}
+
+            {/* ⑤ 機材・オペレーター */}
+            {machines.some((m) => m.items.length > 0) && (
+              <div className="section">
+                <div className="section-title">⑤ 機材・オペレーター</div>
+
+                {machines
+                  .filter((m) => m.items.length > 0)
+                  .map(({ cat, items }) => {
+                    const catTotalInclTax = items.reduce(
+                      (sum: number, e: any) => sum + calcTaxIncludedAmount(e),
+                      0
+                    )
+
+                    return (
+                      <div key={cat} style={{ marginBottom: 8 }}>
+                        <div className="subsection-label">{cat}</div>
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>内容</th>
+                              <th className="center" style={{ width: 60 }}>数量</th>
+                              <th className="num" style={{ width: 80 }}>単価（税抜）</th>
+                              <th className="num" style={{ width: 85 }}>金額（税込）</th>
+                              <th className="center" style={{ width: 60 }}>状態</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {items.map((e: any) => (
+                              <tr key={e.id}>
+                                <td>{e.name}</td>
+                                <td className="center">
+                                  {e.qty} {e.unit}
+                                </td>
+                                <td className="num">
+                                  {e.unit_price > 0 ? formatCurrency(e.unit_price) : '—'}
+                                </td>
+                                <td className="num">
+                                  {calcTaxIncludedAmount(e) > 0
+                                    ? formatCurrency(calcTaxIncludedAmount(e))
+                                    : '—'}
+                                </td>
+                                <td className="center">{e.state}</td>
+                              </tr>
+                            ))}
+                            <tr className="total-row">
+                              <td colSpan={3}>{cat} 合計（税込）</td>
+                              <td className="num">{formatCurrency(catTotalInclTax)}</td>
+                              <td />
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    )
+                  })}
+
+                <div className="summary-box">
+                  <div className="summary-row total">
+                    <span>機材・オペレーター合計（税込）</span>
+                    <span>{formatCurrency(machineTotalInclTax)}</span>
+                  </div>
                 </div>
               </div>
+            )}
+
+            {/* ⑥ 確認事項 */}
+            {checklist.length > 0 && (
+              <div className="section">
+                <div className="section-title">⑥ 確認事項</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  {pending.length > 0 && (
+                    <div>
+                      <div
+                        style={{
+                          fontSize: '7.5pt',
+                          fontWeight: 600,
+                          color: '#b45309',
+                          marginBottom: 3,
+                        }}
+                      >
+                        確認中
+                      </div>
+                      <ul className="check-list">
+                        {pending.map((i: any) => (
+                          <li key={i.id}>{i.item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {confirmed.length > 0 && (
+                    <div>
+                      <div
+                        style={{
+                          fontSize: '7.5pt',
+                          fontWeight: 600,
+                          color: '#375623',
+                          marginBottom: 3,
+                        }}
+                      >
+                        確定済み
+                      </div>
+                      <ul className="check-list">
+                        {confirmed.map((i: any) => (
+                          <li key={i.id} className="confirmed">
+                            {i.item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ⑦ の前にオプション合計 */}
+            {(equipment.length > 0 || machines.some((m) => m.items.length > 0)) && (
+              <div className="section">
+                <div className="section-title">オプション合計</div>
+                <div className="summary-box">
+                  <div className="summary-row">
+                    <span>備品・設備 合計（税込）</span>
+                    <span>{formatCurrency(equipmentTotalInclTax)}</span>
+                  </div>
+                  <div className="summary-row">
+                    <span>機材・オペレーター 合計（税込）</span>
+                    <span>{formatCurrency(machineTotalInclTax)}</span>
+                  </div>
+                  <div className="summary-row total">
+                    <span>全オプション合計（税込）</span>
+                    <span>{formatCurrency(optionGrandTotalInclTax)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ⑦ レイアウト図 */}
+            {layouts.length > 0 && (
+              <div className="section">
+                <div className="section-title">⑦ レイアウト図</div>
+                <div className="layout-grid">
+                  {layouts.map((f) => (
+                    <div key={f.id} className="layout-item">
+                      {f.displayUrl ? (
+                        f.isPdf ? (
+                          <div className="pdf-box">
+                            <iframe
+                              src={`${f.displayUrl}#page=1&view=FitH&zoom=page-width&toolbar=0&navpanes=0&scrollbar=0`}
+                              title={f.label ?? f.file_name}
+                            />
+                          </div>
+                        ) : (
+                          <img src={f.displayUrl} alt={f.label ?? f.file_name} />
+                        )
+                      ) : (
+                        <div
+                          style={{
+                            height: 180,
+                            border: '0.5pt solid #ddd',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 4,
+                            fontSize: 8,
+                            color: '#888',
+                            background: '#fff',
+                          }}
+                        >
+                          <span style={{ fontSize: 16 }}>{f.isPdf ? '📄' : '🖼️'}</span>
+                          <span style={{ fontWeight: 600 }}>{f.file_name}</span>
+                          <span>プレビューを表示できません</span>
+                        </div>
+                      )}
+                      <div className="layout-label">{f.label || f.file_name}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ⑧ 備考・注意事項 */}
+            <div className="section">
+              <div className="section-title">⑧ 備考・注意事項</div>
+              <table>
+                <tbody>
+                  {c.notes && (
+                    <tr>
+                      <th style={{ width: '15%', verticalAlign: 'top' }}>備考</th>
+                      <td style={{ whiteSpace: 'pre-wrap' }}>{c.notes}</td>
+                    </tr>
+                  )}
+                  <tr>
+                    <th style={{ verticalAlign: 'top' }}>注意事項</th>
+                    <td style={{ fontSize: '8pt', color: '#444', lineHeight: 1.6 }}>
+                      ・ステージ上での飲食はお断りしております。また、機材に触れないようご留意くださいませ。<br />
+                      ・1Fの共有部やビル前にたまらないよう、お客様スタッフにて、ご対応をお願い致します。<br />
+                      ・搬入出作業は、B1からのみとなります。1F正面口からは行えません。皆様へ共有お願い致します。<br />
+                      ・一気飲み等、泥酔の可能性がある行為はお断りしております。発生した場合、対応をお願い致します。<br />
+                      ・20:00より8Fステージは復旧作業に入ります。内容によって、早める可能性もございます。<br />
+                      ・当日までのお支払いを、原則、お願いしておりますので、遵守いただくようご留意くださいませ。
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
