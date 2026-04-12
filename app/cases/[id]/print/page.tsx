@@ -135,52 +135,61 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
 
     /* 画面上でも他UIを隠す */
     #print-screen {
-      position: fixed;
-      inset: 0;
-      z-index: 99999;
-      overflow: auto;
-      background: #fff;
-    }
+  position: relative;
+  background: #fff;
+  min-height: 100vh;
+}
 
     .page {
-      width: 210mm;
-      min-height: 297mm;
-      padding: 15mm 18mm;
-      margin: 0 auto;
-      background: #fff;
-    }
+  width: 210mm;
+  padding: 15mm 18mm;
+  margin: 0 auto;
+  background: #fff;
+}
 
-    @media print {
-      @page {
-        size: A4 portrait;
-        margin: 0;
-      }
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
 
-      html, body {
-        width: 210mm;
-        background: #fff !important;
-      }
+  html, body {
+    width: auto;
+    height: auto;
+    background: #fff !important;
+  }
 
-      #print-screen {
-        position: static;
-        inset: auto;
-        overflow: visible;
-        background: #fff;
-      }
+  #print-screen {
+    position: static;
+    overflow: visible;
+    min-height: auto;
+    background: #fff;
+  }
 
-      .page {
-        padding: 12mm 15mm;
-        page-break-after: always;
-      }
+  .page {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    page-break-after: auto;
+  }
 
-      .no-print {
-        display: none !important;
-      }
+  .no-print {
+    display: none !important;
+  }
 
-      .page-break {
-        page-break-before: auto;
-      }
-    }
+  .section,
+  table,
+  .layout-item,
+  .summary-box {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .page-break {
+    page-break-before: auto;
+  }
+}
 
     .header {
       border-bottom: 2px solid #1a1a1a;
@@ -323,14 +332,14 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
     }
 
     .pdf-box {
-      width: 100%;
-      max-width: 176mm;
-      margin: 0 auto;
-      aspect-ratio: 210 / 297;
-      border: 0.5pt solid #ddd;
-      background: #fff;
-      overflow: hidden;
-    }
+  width: 100%;
+  max-width: 176mm;
+  margin: 0 auto;
+  height: 430pt;
+  border: 0.5pt solid #ddd;
+  background: #fff;
+  overflow: hidden;
+}
 
     .layout-item iframe {
       width: 100%;
@@ -758,7 +767,7 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
                         f.isPdf ? (
                           <div className="pdf-box">
                             <iframe
-                              src={`${f.displayUrl}#page=1&view=FitH&zoom=page-width&toolbar=0&navpanes=0&scrollbar=0`}
+                              src={`${f.displayUrl}#page=1&view=FitH&zoom=80&toolbar=0&navpanes=0&scrollbar=0`}
                               title={f.label ?? f.file_name}
                             />
                           </div>
