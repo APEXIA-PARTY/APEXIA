@@ -130,8 +130,13 @@ export const caseFormSchema = z.object({
   // Google Calendar
   gcal_event_id: emptyToNull(z.string().max(200).nullable().optional()),
 
+
   // 自動キャンセル
   auto_cancel: z.boolean().optional(),
+
+  // 下見フラグ（APIで自動制御・フォームでは使わない）
+  has_previewed: z.boolean().optional(),
+
 
   // キャンセル関連
   cancel_reason_id: optionalUuid,

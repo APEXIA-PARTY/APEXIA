@@ -122,6 +122,7 @@ export interface OptionMaster {
 // ─── 案件テーブル ──────────────────────────────────────────────
 export interface Case {
   id: string
+
   // 基本情報
   company: string
   contact: string | null
@@ -161,6 +162,7 @@ export interface Case {
   // ステータス・キャンセル
   status: CaseStatus
   auto_cancel: boolean
+  has_previewed: boolean
   cancel_reason_id: string | null
   cancel_note: string | null
 

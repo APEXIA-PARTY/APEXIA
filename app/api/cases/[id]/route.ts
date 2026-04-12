@@ -63,7 +63,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
   // 更新前の状態を取得（履歴記録用）
   const { data: existing } = await supabase
     .from('cases')
-    .select('status')
+    .select('status, has_previewed')
     .eq('id', params.id)
     .single()
 
@@ -86,6 +86,17 @@ export async function PUT(request: NextRequest, { params }: Params) {
   const cleanedValues = Object.fromEntries(
     Object.entries(values).map(([k, v]) => [k, v === '' ? null : v])
   )
+  const HAS_PREVIEWED_STATUSES = ['previewed', 'tentative', 'confirmed', 'done'] as const
+  const newStatus = values.status
+  const currentHasPreviewed = existing?.has_previewed ?? false
+
+  if (!currentHasPreviewed && HAS_PREVIEWED_STATUSES.includes(newStatus as any)) {
+    cleanedValues.has_previewed = true
+  }
+
+  if (currentHasPreviewed) {
+    cleanedValues.has_previewed = true
+  }
 
   const { data, error: dbError } = await supabase
     .from('cases')
@@ -103,7 +114,6 @@ export async function PUT(request: NextRequest, { params }: Params) {
   }
 
   // ステータス変更の場合は専用の履歴を記録
-  const newStatus = values.status as CaseStatus
   const oldStatus = existing?.status as CaseStatus
 
   if (oldStatus && newStatus !== oldStatus) {
