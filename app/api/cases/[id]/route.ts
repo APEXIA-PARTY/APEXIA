@@ -85,16 +85,19 @@ export async function PUT(request: NextRequest, { params }: Params) {
   const values = parsed.data
   const cleanedValues = Object.fromEntries(
     Object.entries(values).map(([k, v]) => [k, v === '' ? null : v])
-  )
-  const HAS_PREVIEWED_STATUSES = ['previewed', 'tentative', 'confirmed', 'done'] as const
+  ) as Record<string, unknown>
+
+  // フロントから送られてきた has_previewed は信用しない
+  delete cleanedValues.has_previewed
+
   const newStatus = values.status
   const currentHasPreviewed = existing?.has_previewed ?? false
 
-  if (!currentHasPreviewed && HAS_PREVIEWED_STATUSES.includes(newStatus as any)) {
+  // has_previewed は previewed になった時だけ true にする
+  if (newStatus === 'previewed') {
     cleanedValues.has_previewed = true
-  }
-
-  if (currentHasPreviewed) {
+  } else if (currentHasPreviewed) {
+    // 一度 true になったら、その後のステータス変更でも維持する
     cleanedValues.has_previewed = true
   }
 

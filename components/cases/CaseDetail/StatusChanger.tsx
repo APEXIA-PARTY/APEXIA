@@ -48,7 +48,6 @@ export function CaseStatusChanger({
     fetch('/api/master/cancel-reasons')
       .then((r) => (r.ok ? r.json() : []))
       .then((data: CancelReasonItem[]) =>
-        // 自動キャンセル専用理由は手動選択から除外
         setReasons(Array.isArray(data) ? data.filter((r: CancelReasonItem) => !r.is_auto_cancel) : [])
       )
   }, [])
@@ -57,7 +56,6 @@ export function CaseStatusChanger({
   const config = STATUS_CONFIG[status]
 
   const handleSave = async () => {
-    // cancelled の場合はキャンセル理由必須
     if (isCancelled && !cancelReasonId) {
       toast.error('キャンセル理由を選択してください')
       return
@@ -65,9 +63,6 @@ export function CaseStatusChanger({
 
     setLoading(true)
     try {
-      // PUT は CaseForm と同じエンドポイントを使う
-      // ステータス・キャンセル関連フィールドのみ送るためにパッチ相当の処理
-      // ※ API 側は full update なので現在の case データを取得してマージする
       const currentRes = await fetch(`/api/cases/${caseId}`)
       if (!currentRes.ok) throw new Error('案件の取得に失敗しました')
       const current = await currentRes.json()
@@ -86,6 +81,8 @@ export function CaseStatusChanger({
         case_files: undefined,
         case_hold_logs: undefined,
         case_history: undefined,
+        // has_previewed はフロントから送らない。API側のルールで決定する
+        has_previewed: undefined,
         // 変更フィールド
         status,
         cancel_reason_id: isCancelled ? cancelReasonId || null : null,
@@ -107,7 +104,7 @@ export function CaseStatusChanger({
       toast.success(`ステータスを「${STATUS_CONFIG[status].label}」に変更しました`)
       setOpen(false)
       router.refresh()
-    } catch (e) {
+    } catch {
       toast.error('更新に失敗しました')
     } finally {
       setLoading(false)
@@ -115,7 +112,6 @@ export function CaseStatusChanger({
   }
 
   const handleCancel = () => {
-    // 変更を破棄してリセット
     setStatus(currentStatus)
     setCancelReasonId(currentCancelReasonId ?? '')
     setCancelNote(currentCancelNote ?? '')
@@ -124,7 +120,6 @@ export function CaseStatusChanger({
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      {/* 現在のステータスバッジ + 変更ボタン */}
       <div className="flex items-center gap-2">
         <span
           className={cn(
@@ -137,7 +132,6 @@ export function CaseStatusChanger({
           {autoCancel && ' （自動）'}
         </span>
 
-        {/* auto_cancel でなければ変更ボタンを表示 */}
         {!autoCancel && (
           <button
             onClick={() => setOpen((o) => !o)}
@@ -149,12 +143,10 @@ export function CaseStatusChanger({
         )}
       </div>
 
-      {/* 変更パネル */}
       {open && (
         <div className="w-full space-y-3 rounded-lg border border-border bg-card p-4 shadow-sm">
           <p className="text-sm font-medium text-foreground">ステータスを変更</p>
 
-          {/* ステータス選択 */}
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">新しいステータス</label>
             <select
@@ -163,7 +155,6 @@ export function CaseStatusChanger({
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring sm:w-52"
             >
               {STATUS_LIST
-                // 自動キャンセルは手動で選択不可
                 .filter((s) => String(s.value) !== 'auto_cancel')
                 .map((s) => (
                   <option key={s.value} value={s.value}>
@@ -173,7 +164,6 @@ export function CaseStatusChanger({
             </select>
           </div>
 
-          {/* キャンセル選択時のみ追加入力 */}
           {isCancelled && (
             <div className="space-y-3 rounded-md border border-destructive/30 bg-destructive/5 p-3">
               <p className="text-xs font-medium text-destructive">キャンセル情報を入力してください</p>
@@ -207,7 +197,6 @@ export function CaseStatusChanger({
             </div>
           )}
 
-          {/* ボタン */}
           <div className="flex items-center gap-2">
             <button
               onClick={handleSave}
