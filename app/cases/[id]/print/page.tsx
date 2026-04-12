@@ -335,7 +335,7 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
   width: 100%;
   max-width: 176mm;
   margin: 0 auto;
-  height: 430pt;
+  height: 520pt;
   border: 0.5pt solid #ddd;
   background: #fff;
   overflow: hidden;
@@ -767,7 +767,7 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
                         f.isPdf ? (
                           <div className="pdf-box">
                             <iframe
-                              src={`${f.displayUrl}#page=1&view=FitH&zoom=80&toolbar=0&navpanes=0&scrollbar=0`}
+                              src={`${f.displayUrl}#page=1&view=Fit&zoom=45&toolbar=0&navpanes=0&scrollbar=0`}
                               title={f.label ?? f.file_name}
                             />
                           </div>
