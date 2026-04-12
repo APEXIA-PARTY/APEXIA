@@ -398,7 +398,6 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
       font-size: 9pt;
     }
   `
-
   return (
     <html lang="ja">
       <head>
@@ -422,7 +421,7 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
             }}
           >
             <a
-              href={`/cases/${params.id}`}
+              href={`/ cases / ${params.id}`}
               style={{
                 padding: '8px 16px',
                 background: '#fff',
@@ -765,11 +764,28 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
                     <div key={f.id} className="layout-item">
                       {f.displayUrl ? (
                         f.isPdf ? (
-                          <div className="pdf-box">
-                            <iframe
-                              src={`${f.displayUrl}#page=1&view=Fit&zoom=45&toolbar=0&navpanes=0&scrollbar=0`}
-                              title={f.label ?? f.file_name}
-                            />
+                          <div
+                            style={{
+                              minHeight: 120,
+                              border: '0.5pt solid #ddd',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 6,
+                              fontSize: 9,
+                              color: '#666',
+                              background: '#fff',
+                              padding: 12,
+                              textAlign: 'center',
+                            }}
+                          >
+                            <div style={{ fontSize: 24 }}>📄</div>
+                            <div style={{ fontWeight: 600 }}>{f.file_name}</div>
+                            <div>PDFレイアウト図</div>
+                            <div style={{ fontSize: 8, color: '#888' }}>
+                              詳細はダウンロードしてご確認ください
+                            </div>
                           </div>
                         ) : (
                           <img src={f.displayUrl} alt={f.label ?? f.file_name} />
@@ -777,21 +793,23 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
                       ) : (
                         <div
                           style={{
-                            height: 180,
+                            minHeight: 120,
                             border: '0.5pt solid #ddd',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: 4,
-                            fontSize: 8,
+                            gap: 6,
+                            fontSize: 9,
                             color: '#888',
                             background: '#fff',
+                            padding: 12,
+                            textAlign: 'center',
                           }}
                         >
-                          <span style={{ fontSize: 16 }}>{f.isPdf ? '📄' : '🖼️'}</span>
-                          <span style={{ fontWeight: 600 }}>{f.file_name}</span>
-                          <span>プレビューを表示できません</span>
+                          <div style={{ fontSize: 24 }}>{f.isPdf ? '📄' : '🖼️'}</div>
+                          <div style={{ fontWeight: 600 }}>{f.file_name}</div>
+                          <div>プレビューを表示できません</div>
                         </div>
                       )}
                       <div className="layout-label">{f.label || f.file_name}</div>
@@ -800,6 +818,8 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
                 </div>
               </div>
             )}
+
+
 
             {/* ⑧ 備考・注意事項 */}
             <div className="section">
@@ -826,9 +846,9 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
-      </body>
-    </html>
+          </div >
+        </div >
+      </body >
+    </html >
   )
 }
