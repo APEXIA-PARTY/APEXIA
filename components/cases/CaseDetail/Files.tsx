@@ -393,7 +393,7 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
           onClick={() => setPreviewFile(null)}
         >
           <div
-            className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl bg-card shadow-2xl"
+            className="flex w-full max-w-5xl flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-border px-5 py-3">
@@ -431,7 +431,7 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
               </div>
             </div>
 
-            <div className="flex-1 overflow-auto bg-muted/20">
+            <div className="bg-muted/20">
               {!previewFile.signedUrl ? (
                 <div className="flex h-48 items-center justify-center">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
