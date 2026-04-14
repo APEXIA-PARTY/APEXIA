@@ -385,7 +385,6 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
           )}
         </div>
       </section>
-
       {/* プレビューモーダル */}
       {previewFile && (
         <div
@@ -397,8 +396,11 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-border px-5 py-3">
-              <p className="text-sm font-medium truncate">{previewFile.label || previewFile.file_name}</p>
-              <div className="flex shrink-0 items-center gap-2 ml-4">
+              <p className="text-sm font-medium truncate">
+                {previewFile.label || previewFile.file_name}
+              </p>
+
+              <div className="ml-4 flex shrink-0 items-center gap-2">
                 <button
                   onClick={() => handleDownload(previewFile)}
                   className="inline-flex items-center gap-1 rounded-md border border-input px-3 py-1 text-xs hover:bg-muted"
@@ -441,8 +443,8 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
                 />
               ) : previewFile.mime_type === 'application/pdf' ? (
                 <iframe
-                  src={previewFile.signedUrl}
-                  className="h-[80vh] w-full bg-white"
+                  src={`${previewFile.signedUrl}#toolbar=0&navpanes=0&scrollbar=0`}
+                  className="h-[85vh] w-full bg-white"
                   title={previewFile.file_name}
                 />
               ) : (
@@ -526,15 +528,11 @@ function LayoutCard({
     }
 
     if (isPdf) {
-      return thumbUrl ? (
-        <iframe
-          src={thumbUrl}
-          className="h-40 w-full bg-white"
-          title={file.file_name}
-        />
-      ) : (
-        <div className="flex h-40 items-center justify-center bg-muted/40">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      return (
+        <div className="flex h-56 flex-col items-center justify-center gap-3 bg-white px-4 text-center">
+          <FileText className="h-12 w-12 text-red-500" />
+          <p className="text-sm font-medium text-foreground">{file.file_name}</p>
+          <p className="text-xs text-muted-foreground">PDFレイアウト図</p>
         </div>
       )
     }
@@ -548,7 +546,11 @@ function LayoutCard({
 
   return (
     <div className="group relative overflow-hidden rounded-lg border border-border bg-muted/20">
-      <button onClick={onPreview} className="block w-full text-left" title="クリックしてプレビュー">
+      <button
+        onClick={onPreview}
+        className="block w-full text-left"
+        title="クリックしてプレビュー"
+      >
         {thumb()}
       </button>
 
