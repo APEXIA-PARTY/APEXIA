@@ -50,6 +50,120 @@ function FileTypeIcon({ mimeType }: { mimeType: string | null }) {
   return <File className="h-5 w-5 text-muted-foreground" />
 }
 
+function PdfCanvasPreview({
+  url,
+  mode,
+}: {
+  url: string
+  mode: 'thumb' | 'viewer'
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    let loadingTask: any = null
+
+    const renderPdf = async () => {
+      try {
+        setLoading(true)
+        setError(false)
+
+        const pdfjs = await import('pdfjs-dist')
+        const { getDocument, GlobalWorkerOptions, version } = pdfjs as any
+
+        GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/pdf.worker.min.js`
+
+        loadingTask = getDocument(url)
+        const pdf = await loadingTask.promise
+        const page = await pdf.getPage(1)
+
+        const baseViewport = page.getViewport({ scale: 1 })
+        const targetWidth = mode === 'thumb' ? 320 : 1200
+        const scale = targetWidth / baseViewport.width
+        const viewport = page.getViewport({ scale })
+
+        if (cancelled || !canvasRef.current) return
+
+        const canvas = canvasRef.current
+        const context = canvas.getContext('2d')
+        if (!context) return
+
+        canvas.width = viewport.width
+        canvas.height = viewport.height
+
+        await page.render({
+          canvasContext: context,
+          viewport,
+        }).promise
+
+        if (!cancelled) setLoading(false)
+      } catch (e) {
+        if (!cancelled) {
+          setError(true)
+          setLoading(false)
+        }
+      }
+    }
+
+    void renderPdf()
+
+    return () => {
+      cancelled = true
+      try {
+        loadingTask?.destroy?.()
+      } catch { }
+    }
+  }, [url, mode])
+
+  if (loading) {
+    return (
+      <div
+        className={cn(
+          'flex items-center justify-center bg-white',
+          mode === 'thumb' ? 'h-56 w-full' : 'min-h-[60vh] w-full p-4'
+        )}
+      >
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div
+        className={cn(
+          'flex flex-col items-center justify-center gap-2 bg-white text-center',
+          mode === 'thumb' ? 'h-56 w-full px-4' : 'min-h-[60vh] w-full p-6'
+        )}
+      >
+        <FileText className="h-10 w-10 text-red-500" />
+        <p className="text-sm text-muted-foreground">PDFを表示できません</p>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className={cn(
+        'flex items-center justify-center bg-white',
+        mode === 'thumb' ? 'h-56 w-full p-2' : 'w-full p-4'
+      )}
+    >
+      <canvas
+        ref={canvasRef}
+        className={cn(
+          'block border border-border bg-white',
+          mode === 'thumb'
+            ? 'max-h-full max-w-full object-contain'
+            : 'h-auto max-w-full'
+        )}
+      />
+    </div>
+  )
+}
+
 interface Props {
   caseId: string
   isEditable: boolean
@@ -60,6 +174,7 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [previewFile, setPreviewFile] = useState<FileWithUrl | null>(null)
+
   const dropRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const layoutInputRef = useRef<HTMLInputElement>(null)
@@ -73,25 +188,35 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
   }, [caseId])
 
   useEffect(() => {
-    fetchFiles()
+    void fetchFiles()
   }, [fetchFiles])
 
   const fetchSignedUrl = useCallback(
     async (fileId: string): Promise<string | null> => {
-      setFiles((prev) => prev.map((f) => (f.id === fileId ? { ...f, urlLoading: true } : f)))
+      setFiles((prev) =>
+        prev.map((f) => (f.id === fileId ? { ...f, urlLoading: true } : f))
+      )
+
       try {
         const res = await fetch(`/api/cases/${caseId}/files/${fileId}/url`)
         if (!res.ok) {
           toast.error('URLの取得に失敗しました')
           return null
         }
+
         const { url } = await res.json()
+
         setFiles((prev) =>
-          prev.map((f) => (f.id === fileId ? { ...f, signedUrl: url, urlLoading: false } : f))
+          prev.map((f) =>
+            f.id === fileId ? { ...f, signedUrl: url, urlLoading: false } : f
+          )
         )
+
         return url
       } catch {
-        setFiles((prev) => prev.map((f) => (f.id === fileId ? { ...f, urlLoading: false } : f)))
+        setFiles((prev) =>
+          prev.map((f) => (f.id === fileId ? { ...f, urlLoading: false } : f))
+        )
         return null
       }
     },
@@ -101,14 +226,18 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
   const openPreview = async (file: FileWithUrl) => {
     let url = file.signedUrl
     if (!url) url = (await fetchSignedUrl(file.id)) ?? undefined
-    if (url) setPreviewFile({ ...file, signedUrl: url })
-    else toast.error('プレビューURLの取得に失敗しました')
+    if (!url) {
+      toast.error('プレビューURLの取得に失敗しました')
+      return
+    }
+    setPreviewFile({ ...file, signedUrl: url })
   }
 
   const handleDownload = async (file: FileWithUrl) => {
     let url = file.signedUrl
     if (!url) url = (await fetchSignedUrl(file.id)) ?? undefined
     if (!url) return
+
     const a = document.createElement('a')
     a.href = url
     a.download = file.file_name
@@ -161,15 +290,21 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
       }
     }
 
-    if (errors.length > 0) errors.forEach((e) => toast.error(e))
-    else toast.success('アップロードしました')
+    if (errors.length > 0) {
+      errors.forEach((e) => toast.error(e))
+    } else {
+      toast.success('アップロードしました')
+    }
 
     await fetchFiles()
     setUploading(false)
   }
 
   const updateFileType = async (id: string, fileType: FileType) => {
-    setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, file_type: fileType } : f)))
+    setFiles((prev) =>
+      prev.map((f) => (f.id === id ? { ...f, file_type: fileType } : f))
+    )
+
     await fetch(`/api/cases/${caseId}/files`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -178,7 +313,10 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
   }
 
   const updateLabel = async (id: string, label: string) => {
-    setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, label: label || null } : f)))
+    setFiles((prev) =>
+      prev.map((f) => (f.id === id ? { ...f, label: label || null } : f))
+    )
+
     await fetch(`/api/cases/${caseId}/files`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -188,11 +326,16 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
 
   const deleteFile = async (file: FileWithUrl) => {
     if (!window.confirm(`「${file.file_name}」を削除しますか？`)) return
-    const res = await fetch(`/api/cases/${caseId}/files/${file.id}`, { method: 'DELETE' })
+
+    const res = await fetch(`/api/cases/${caseId}/files/${file.id}`, {
+      method: 'DELETE',
+    })
+
     if (!res.ok) {
       toast.error('削除に失敗しました')
       return
     }
+
     setFiles((prev) => prev.filter((f) => f.id !== file.id))
     if (previewFile?.id === file.id) setPreviewFile(null)
     toast.success('削除しました')
@@ -201,11 +344,12 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
   const layoutFiles = files.filter((f) => f.file_type === 'レイアウト図')
   const otherFiles = files.filter((f) => f.file_type !== 'レイアウト図')
 
-  if (loading) return <div className="h-24 animate-pulse rounded-lg bg-muted/40" />
+  if (loading) {
+    return <div className="h-24 animate-pulse rounded-lg bg-muted/40" />
+  }
 
   return (
     <div className="space-y-4">
-      {/* ⑦ 添付ファイル */}
       <section className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-3">
           <h2 className="text-sm font-semibold">⑦ 添付ファイル</h2>
@@ -231,7 +375,7 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
               onDrop={(e) => {
                 e.preventDefault()
                 dropRef.current?.classList.remove('border-primary', 'bg-primary/5')
-                if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files)
+                if (e.dataTransfer.files.length) void uploadFiles(e.dataTransfer.files)
               }}
             >
               <input
@@ -239,8 +383,9 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
                 type="file"
                 multiple
                 className="hidden"
-                onChange={(e) => e.target.files && uploadFiles(e.target.files)}
+                onChange={(e) => e.target.files && void uploadFiles(e.target.files)}
               />
+
               {uploading ? (
                 <>
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -259,7 +404,9 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
           )}
 
           {otherFiles.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground py-2">ファイルがありません</p>
+            <p className="py-2 text-center text-sm text-muted-foreground">
+              ファイルがありません
+            </p>
           ) : (
             <div className="space-y-2">
               {otherFiles.map((f) => (
@@ -268,17 +415,17 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
                   className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3"
                 >
                   <button
-                    onClick={() => openPreview(f)}
+                    onClick={() => void openPreview(f)}
                     className="shrink-0 hover:opacity-70"
                     title="プレビュー"
                   >
                     <FileTypeIcon mimeType={f.mime_type} />
                   </button>
 
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 flex-1">
                     <button
-                      onClick={() => openPreview(f)}
-                      className="block text-sm font-medium truncate hover:underline text-left"
+                      onClick={() => void openPreview(f)}
+                      className="block truncate text-left text-sm font-medium hover:underline"
                     >
                       {f.file_name}
                     </button>
@@ -291,7 +438,7 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
                   {isEditable ? (
                     <select
                       value={f.file_type}
-                      onChange={(e) => updateFileType(f.id, e.target.value as FileType)}
+                      onChange={(e) => void updateFileType(f.id, e.target.value as FileType)}
                       className="rounded border border-input bg-background px-2 py-1 text-xs"
                     >
                       {FILE_TYPES.map((t) => (
@@ -307,7 +454,7 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
                   )}
 
                   <button
-                    onClick={() => handleDownload(f)}
+                    onClick={() => void handleDownload(f)}
                     disabled={f.urlLoading}
                     className="shrink-0 rounded p-1 text-muted-foreground hover:text-primary disabled:opacity-50"
                     title="ダウンロード"
@@ -321,7 +468,7 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
 
                   {isEditable && (
                     <button
-                      onClick={() => deleteFile(f)}
+                      onClick={() => void deleteFile(f)}
                       className="shrink-0 rounded p-1 text-muted-foreground hover:text-destructive"
                       title="削除"
                     >
@@ -335,7 +482,6 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
         </div>
       </section>
 
-      {/* ⑧ レイアウト図 */}
       <section className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-3">
           <h2 className="text-sm font-semibold">⑧ レイアウト図</h2>
@@ -351,7 +497,7 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
                 multiple
                 accept="image/*,application/pdf"
                 className="hidden"
-                onChange={(e) => e.target.files && uploadFiles(e.target.files, 'レイアウト図')}
+                onChange={(e) => e.target.files && void uploadFiles(e.target.files, 'レイアウト図')}
               />
               <button
                 onClick={() => layoutInputRef.current?.click()}
@@ -365,7 +511,9 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
           )}
 
           {layoutFiles.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground py-2">レイアウト図がありません</p>
+            <p className="py-2 text-center text-sm text-muted-foreground">
+              レイアウト図がありません
+            </p>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {layoutFiles.map((f) => (
@@ -373,11 +521,11 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
                   key={f.id}
                   file={f}
                   isEditable={isEditable}
-                  onPreview={() => openPreview(f)}
-                  onDownload={() => handleDownload(f)}
-                  onOpenNewTab={() => openInNewTab(f)}
-                  onLabelChange={(label) => updateLabel(f.id, label)}
-                  onDelete={() => deleteFile(f)}
+                  onPreview={() => void openPreview(f)}
+                  onDownload={() => void handleDownload(f)}
+                  onOpenNewTab={() => void openInNewTab(f)}
+                  onLabelChange={(label) => void updateLabel(f.id, label)}
+                  onDelete={() => void deleteFile(f)}
                   onFetchUrl={() => fetchSignedUrl(f.id)}
                 />
               ))}
@@ -385,7 +533,7 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
           )}
         </div>
       </section>
-      {/* プレビューモーダル */}
+
       {previewFile && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
@@ -396,13 +544,13 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-border px-5 py-3">
-              <p className="text-sm font-medium truncate">
+              <p className="truncate text-sm font-medium">
                 {previewFile.label || previewFile.file_name}
               </p>
 
               <div className="ml-4 flex shrink-0 items-center gap-2">
                 <button
-                  onClick={() => handleDownload(previewFile)}
+                  onClick={() => void handleDownload(previewFile)}
                   className="inline-flex items-center gap-1 rounded-md border border-input px-3 py-1 text-xs hover:bg-muted"
                 >
                   <Download className="h-3.5 w-3.5" />
@@ -436,23 +584,21 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               ) : previewFile.mime_type?.startsWith('image/') ? (
-                <img
-                  src={previewFile.signedUrl}
-                  alt={previewFile.file_name}
-                  className="max-h-[75vh] w-full object-contain"
-                />
+                <div className="flex min-h-[60vh] items-center justify-center bg-white p-4">
+                  <img
+                    src={previewFile.signedUrl}
+                    alt={previewFile.file_name}
+                    className="max-h-[80vh] max-w-full object-contain"
+                  />
+                </div>
               ) : previewFile.mime_type === 'application/pdf' ? (
-                <iframe
-                  src={`${previewFile.signedUrl}#toolbar=0&navpanes=0&scrollbar=0`}
-                  className="h-[85vh] w-full bg-white"
-                  title={previewFile.file_name}
-                />
+                <PdfCanvasPreview url={previewFile.signedUrl} mode="viewer" />
               ) : (
                 <div className="flex h-48 flex-col items-center justify-center gap-3">
                   <File className="h-12 w-12 text-muted-foreground/40" />
                   <p className="text-sm text-muted-foreground">{previewFile.file_name}</p>
                   <button
-                    onClick={() => handleDownload(previewFile)}
+                    onClick={() => void handleDownload(previewFile)}
                     className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90"
                   >
                     ダウンロード
@@ -528,11 +674,11 @@ function LayoutCard({
     }
 
     if (isPdf) {
-      return (
-        <div className="flex h-56 flex-col items-center justify-center gap-3 bg-white px-4 text-center">
-          <FileText className="h-12 w-12 text-red-500" />
-          <p className="text-sm font-medium text-foreground">{file.file_name}</p>
-          <p className="text-xs text-muted-foreground">PDFレイアウト図</p>
+      return thumbUrl ? (
+        <PdfCanvasPreview url={thumbUrl} mode="thumb" />
+      ) : (
+        <div className="flex h-56 items-center justify-center bg-muted/40">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       )
     }
@@ -563,7 +709,7 @@ function LayoutCard({
             onBlur={(e) => onLabelChange(e.target.value)}
           />
         ) : (
-          <p className="text-xs font-medium break-all">
+          <p className="break-all text-xs font-medium">
             {file.label || <span className="text-muted-foreground/50">{file.file_name}</span>}
           </p>
         )}
