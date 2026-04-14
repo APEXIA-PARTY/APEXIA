@@ -50,94 +50,6 @@ function FileTypeIcon({ mimeType }: { mimeType: string | null }) {
   return <File className="h-5 w-5 text-muted-foreground" />
 }
 
-function PdfPreview({
-  url,
-  className,
-  pageWidth = 900,
-}: {
-  url: string
-  className?: string
-  pageWidth?: number
-}) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function renderPdf() {
-      try {
-        setLoading(true)
-        setError(false)
-
-        const pdfjsLib = await import('pdfjs-dist')
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`
-
-
-        const loadingTask = pdfjsLib.getDocument(url)
-        const pdf = await loadingTask.promise
-        const page = await pdf.getPage(1)
-
-        const baseViewport = page.getViewport({ scale: 1 })
-        const scale = pageWidth / baseViewport.width
-        const viewport = page.getViewport({ scale })
-
-        if (cancelled || !canvasRef.current) return
-
-        const canvas = canvasRef.current
-        const context = canvas.getContext('2d')
-        if (!context) return
-
-        canvas.width = viewport.width
-        canvas.height = viewport.height
-
-        await page.render({
-          canvas,
-          canvasContext: context,
-          viewport,
-        }).promise
-
-        if (!cancelled) setLoading(false)
-      } catch (e) {
-        if (!cancelled) {
-          setError(true)
-          setLoading(false)
-        }
-      }
-    }
-
-    void renderPdf()
-
-    return () => {
-      cancelled = true
-    }
-  }, [url, pageWidth])
-
-  if (loading) {
-    return (
-      <div className={cn('flex items-center justify-center bg-white', className)}>
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className={cn('flex flex-col items-center justify-center gap-2 bg-white', className)}>
-        <FileText className="h-10 w-10 text-red-500" />
-        <p className="text-xs text-muted-foreground">PDFを表示できません</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className={cn('flex items-center justify-center bg-white p-2', className)}>
-      <canvas ref={canvasRef} className="max-h-full max-w-full object-contain" />
-    </div>
-  )
-}
-
 interface Props {
   caseId: string
   isEditable: boolean
@@ -148,6 +60,7 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [previewFile, setPreviewFile] = useState<FileWithUrl | null>(null)
+
   const dropRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const layoutInputRef = useRef<HTMLInputElement>(null)
@@ -474,7 +387,6 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
           )}
         </div>
       </section>
-
       {/* プレビューモーダル */}
       {previewFile && (
         <div
@@ -482,11 +394,11 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
           onClick={() => setPreviewFile(null)}
         >
           <div
-            className="flex w-full max-w-6xl flex-col overflow-hidden rounded-xl bg-card shadow-2xl"
+            className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-card shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-border px-5 py-3">
-              <p className="truncate text-sm font-medium">
+              <p className="text-sm font-medium truncate">
                 {previewFile.label || previewFile.file_name}
               </p>
 
@@ -520,24 +432,22 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
               </div>
             </div>
 
-            <div className="bg-muted/20">
+            <div className="flex-1 overflow-auto bg-muted/20">
               {!previewFile.signedUrl ? (
                 <div className="flex h-48 items-center justify-center">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               ) : previewFile.mime_type?.startsWith('image/') ? (
-                <div className="flex items-center justify-center bg-white p-4">
-                  <img
-                    src={previewFile.signedUrl}
-                    alt={previewFile.file_name}
-                    className="h-auto max-w-full object-contain"
-                  />
-                </div>
+                <img
+                  src={previewFile.signedUrl}
+                  alt={previewFile.file_name}
+                  className="max-h-[75vh] w-full object-contain"
+                />
               ) : previewFile.mime_type === 'application/pdf' ? (
-                <PdfPreview
-                  url={previewFile.signedUrl}
-                  pageWidth={1400}
-                  className="w-full min-h-[70vh]"
+                <iframe
+                  src={previewFile.signedUrl}
+                  className="h-[75vh] w-full bg-white"
+                  title={previewFile.file_name}
                 />
               ) : (
                 <div className="flex h-48 flex-col items-center justify-center gap-3">
@@ -597,7 +507,7 @@ function LayoutCard({
   const thumb = () => {
     if (thumbLoading) {
       return (
-        <div className="flex h-56 items-center justify-center bg-muted/40">
+        <div className="flex h-36 items-center justify-center bg-muted/40">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       )
@@ -605,15 +515,13 @@ function LayoutCard({
 
     if (isImage) {
       return thumbUrl ? (
-        <div className="flex h-56 w-full items-center justify-center bg-white p-2">
-          <img
-            src={thumbUrl}
-            alt={file.label ?? file.file_name}
-            className="h-auto max-h-full max-w-full object-contain"
-          />
-        </div>
+        <img
+          src={thumbUrl}
+          alt={file.label ?? file.file_name}
+          className="h-36 w-full object-cover"
+        />
       ) : (
-        <div className="flex h-56 items-center justify-center bg-muted/40">
+        <div className="flex h-36 items-center justify-center bg-muted/40">
           <ImageIcon className="h-8 w-8 text-muted-foreground/40" />
         </div>
       )
@@ -621,85 +529,96 @@ function LayoutCard({
 
     if (isPdf) {
       return thumbUrl ? (
-        <PdfPreview
-          url={thumbUrl}
-          pageWidth={500}
-          className="h-56 w-full"
-        />
+        <div className="relative h-36 w-full overflow-hidden bg-gray-50">
+          <embed
+            src={`${thumbUrl}#toolbar=0&navpanes=0&scrollbar=0&view=Fit`}
+            type="application/pdf"
+            className="h-[200%] w-full"
+            style={{
+              transform: 'scale(0.5)',
+              transformOrigin: 'top left',
+              width: '200%',
+              pointerEvents: 'none',
+            }}
+          />
+          <span className="absolute bottom-1 right-1.5 rounded bg-red-600/80 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+            PDF
+          </span>
+        </div>
       ) : (
-        <div className="flex h-56 items-center justify-center bg-muted/40">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <div className="flex h-36 flex-col items-center justify-center gap-1 bg-red-50">
+          <FileText className="h-8 w-8 text-red-400" />
+          <span className="text-xs font-semibold text-red-600">PDF</span>
         </div>
       )
     }
 
     return (
-      <div className="flex h-56 items-center justify-center bg-muted/40">
+      <div className="flex h-36 items-center justify-center bg-muted/40">
         <File className="h-8 w-8 text-muted-foreground/40" />
       </div>
     )
   }
 
   return (
-    <div className="group relative overflow-hidden rounded-lg border border-border bg-muted/20">
+    <div className="group relative rounded-lg border border-border bg-muted/20 overflow-hidden">
       <button
         onClick={onPreview}
         className="block w-full text-left"
-        title="クリックしてプレビュー"
+        title="クリックして拡大プレビュー"
       >
         {thumb()}
       </button>
 
-      <div className="space-y-2 px-3 py-2">
+      <div className="px-2 py-1.5">
         {isEditable ? (
           <input
-            className="w-full rounded border border-input bg-background px-2 py-1 text-xs text-muted-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-ring"
+            className="w-full rounded border-0 bg-transparent px-1 py-0.5 text-xs text-muted-foreground placeholder:text-muted-foreground/40 focus:bg-muted/50 focus:outline-none"
             defaultValue={file.label ?? ''}
             placeholder="ラベル（例: 7F用）"
             onBlur={(e) => onLabelChange(e.target.value)}
           />
         ) : (
-          <p className="break-all text-xs font-medium">
+          <p className="px-1 text-xs font-medium">
             {file.label || <span className="text-muted-foreground/50">{file.file_name}</span>}
           </p>
         )}
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={onPreview}
-            className="inline-flex items-center gap-1 rounded-md border border-input px-2.5 py-1 text-xs hover:bg-muted"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            開く
-          </button>
-
-          <button
-            onClick={onDownload}
-            className="inline-flex items-center gap-1 rounded-md border border-input px-2.5 py-1 text-xs hover:bg-muted"
-          >
-            <Download className="h-3.5 w-3.5" />
-            DL
-          </button>
-
-          <button
-            onClick={onOpenNewTab}
-            className="inline-flex items-center gap-1 rounded-md border border-input px-2.5 py-1 text-xs hover:bg-muted"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            新しいタブ
-          </button>
-        </div>
       </div>
 
       {isEditable && (
         <button
           onClick={onDelete}
           className="absolute right-1.5 top-1.5 rounded bg-black/50 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-destructive"
-          title="削除"
         >
           <Trash2 className="h-3 w-3" />
         </button>
       )}
+
+      <div className="flex flex-wrap gap-2 border-t border-border px-2 py-2">
+        <button
+          onClick={onPreview}
+          className="inline-flex items-center gap-1 rounded-md border border-input px-2.5 py-1 text-xs hover:bg-muted"
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+          開く
+        </button>
+
+        <button
+          onClick={onDownload}
+          className="inline-flex items-center gap-1 rounded-md border border-input px-2.5 py-1 text-xs hover:bg-muted"
+        >
+          <Download className="h-3.5 w-3.5" />
+          DL
+        </button>
+
+        <button
+          onClick={onOpenNewTab}
+          className="inline-flex items-center gap-1 rounded-md border border-input px-2.5 py-1 text-xs hover:bg-muted"
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+          新しいタブ
+        </button>
+      </div>
     </div>
   )
 }
