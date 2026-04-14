@@ -50,6 +50,94 @@ function FileTypeIcon({ mimeType }: { mimeType: string | null }) {
   return <File className="h-5 w-5 text-muted-foreground" />
 }
 
+function PdfPreview({
+  url,
+  className,
+  pageWidth = 900,
+}: {
+  url: string
+  className?: string
+  pageWidth?: number
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function renderPdf() {
+      try {
+        setLoading(true)
+        setError(false)
+
+        const pdfjsLib = await import('pdfjs-dist')
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`
+
+
+        const loadingTask = pdfjsLib.getDocument(url)
+        const pdf = await loadingTask.promise
+        const page = await pdf.getPage(1)
+
+        const baseViewport = page.getViewport({ scale: 1 })
+        const scale = pageWidth / baseViewport.width
+        const viewport = page.getViewport({ scale })
+
+        if (cancelled || !canvasRef.current) return
+
+        const canvas = canvasRef.current
+        const context = canvas.getContext('2d')
+        if (!context) return
+
+        canvas.width = viewport.width
+        canvas.height = viewport.height
+
+        await page.render({
+          canvas,
+          canvasContext: context,
+          viewport,
+        }).promise
+
+        if (!cancelled) setLoading(false)
+      } catch (e) {
+        if (!cancelled) {
+          setError(true)
+          setLoading(false)
+        }
+      }
+    }
+
+    void renderPdf()
+
+    return () => {
+      cancelled = true
+    }
+  }, [url, pageWidth])
+
+  if (loading) {
+    return (
+      <div className={cn('flex items-center justify-center bg-white', className)}>
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className={cn('flex flex-col items-center justify-center gap-2 bg-white', className)}>
+        <FileText className="h-10 w-10 text-red-500" />
+        <p className="text-xs text-muted-foreground">PDFを表示できません</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className={cn('flex items-center justify-center bg-white p-2', className)}>
+      <canvas ref={canvasRef} className="max-h-full max-w-full object-contain" />
+    </div>
+  )
+}
+
 interface Props {
   caseId: string
   isEditable: boolean
@@ -386,6 +474,7 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
           )}
         </div>
       </section>
+
       {/* プレビューモーダル */}
       {previewFile && (
         <div
@@ -393,11 +482,11 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
           onClick={() => setPreviewFile(null)}
         >
           <div
-            className="flex w-full max-w-5xl flex-col"
+            className="flex w-full max-w-6xl flex-col overflow-hidden rounded-xl bg-card shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-border px-5 py-3">
-              <p className="text-sm font-medium truncate">
+              <p className="truncate text-sm font-medium">
                 {previewFile.label || previewFile.file_name}
               </p>
 
@@ -437,21 +526,19 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               ) : previewFile.mime_type?.startsWith('image/') ? (
-                <div className="flex min-h-[70vh] items-center justify-center bg-white p-4">
+                <div className="flex items-center justify-center bg-white p-4">
                   <img
                     src={previewFile.signedUrl}
                     alt={previewFile.file_name}
-                    className="max-h-[80vh] max-w-full object-contain"
+                    className="h-auto max-w-full object-contain"
                   />
                 </div>
               ) : previewFile.mime_type === 'application/pdf' ? (
-                <div className="h-[85vh] w-full bg-white">
-                  <embed
-                    src={`${previewFile.signedUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
-                    type="application/pdf"
-                    className="h-full w-full"
-                  />
-                </div>
+                <PdfPreview
+                  url={previewFile.signedUrl}
+                  pageWidth={1400}
+                  className="w-full min-h-[70vh]"
+                />
               ) : (
                 <div className="flex h-48 flex-col items-center justify-center gap-3">
                   <File className="h-12 w-12 text-muted-foreground/40" />
@@ -510,7 +597,7 @@ function LayoutCard({
   const thumb = () => {
     if (thumbLoading) {
       return (
-        <div className="flex h-40 items-center justify-center bg-muted/40">
+        <div className="flex h-56 items-center justify-center bg-muted/40">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       )
@@ -522,7 +609,7 @@ function LayoutCard({
           <img
             src={thumbUrl}
             alt={file.label ?? file.file_name}
-            className="max-h-full max-w-full object-contain"
+            className="h-auto max-h-full max-w-full object-contain"
           />
         </div>
       ) : (
@@ -534,13 +621,11 @@ function LayoutCard({
 
     if (isPdf) {
       return thumbUrl ? (
-        <div className="h-56 w-full bg-white">
-          <embed
-            src={`${thumbUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
-            type="application/pdf"
-            className="h-full w-full"
-          />
-        </div>
+        <PdfPreview
+          url={thumbUrl}
+          pageWidth={500}
+          className="h-56 w-full"
+        />
       ) : (
         <div className="flex h-56 items-center justify-center bg-muted/40">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -549,7 +634,7 @@ function LayoutCard({
     }
 
     return (
-      <div className="flex h-40 items-center justify-center bg-muted/40">
+      <div className="flex h-56 items-center justify-center bg-muted/40">
         <File className="h-8 w-8 text-muted-foreground/40" />
       </div>
     )
