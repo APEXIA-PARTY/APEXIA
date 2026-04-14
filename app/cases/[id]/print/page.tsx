@@ -768,7 +768,7 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
                             title={f.label ?? f.file_name}
                             style={{
                               width: '100%',
-                              height: '900px',
+                              height: '800px',
                               border: '0.5pt solid #ddd',
                               background: '#fff',
                             }}
