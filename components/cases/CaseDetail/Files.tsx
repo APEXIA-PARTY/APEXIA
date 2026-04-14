@@ -511,9 +511,15 @@ function LayoutCard({
 
     if (isImage) {
       return thumbUrl ? (
-        <img src={thumbUrl} alt={file.label ?? file.file_name} className="h-40 w-full object-cover" />
+        <div className="flex h-56 w-full items-center justify-center bg-white p-2">
+          <img
+            src={thumbUrl}
+            alt={file.label ?? file.file_name}
+            className="max-h-full max-w-full object-contain"
+          />
+        </div>
       ) : (
-        <div className="flex h-40 items-center justify-center bg-muted/40">
+        <div className="flex h-56 items-center justify-center bg-muted/40">
           <ImageIcon className="h-8 w-8 text-muted-foreground/40" />
         </div>
       )

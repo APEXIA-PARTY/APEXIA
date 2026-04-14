@@ -754,7 +754,6 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
                 </div>
               </div>
             )}
-
             {/* ⑦ レイアウト図 */}
             {layouts.length > 0 && (
               <div className="section">
@@ -764,31 +763,27 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
                     <div key={f.id} className="layout-item">
                       {f.displayUrl ? (
                         f.isPdf ? (
-                          <div
+                          <iframe
+                            src={f.displayUrl}
+                            title={f.label ?? f.file_name}
                             style={{
-                              minHeight: 120,
+                              width: '100%',
+                              height: '900px',
                               border: '0.5pt solid #ddd',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: 6,
-                              fontSize: 9,
-                              color: '#666',
                               background: '#fff',
-                              padding: 12,
-                              textAlign: 'center',
                             }}
-                          >
-                            <div style={{ fontSize: 24 }}>📄</div>
-                            <div style={{ fontWeight: 600 }}>{f.file_name}</div>
-                            <div>PDFレイアウト図</div>
-                            <div style={{ fontSize: 8, color: '#888' }}>
-                              詳細はダウンロードしてご確認ください
-                            </div>
-                          </div>
+                          />
                         ) : (
-                          <img src={f.displayUrl} alt={f.label ?? f.file_name} />
+                          <img
+                            src={f.displayUrl}
+                            alt={f.label ?? f.file_name}
+                            style={{
+                              width: '100%',
+                              height: 'auto',
+                              border: '0.5pt solid #ddd',
+                              background: '#fff',
+                            }}
+                          />
                         )
                       ) : (
                         <div
@@ -796,20 +791,13 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
                             minHeight: 120,
                             border: '0.5pt solid #ddd',
                             display: 'flex',
-                            flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: 6,
-                            fontSize: 9,
                             color: '#888',
                             background: '#fff',
-                            padding: 12,
-                            textAlign: 'center',
                           }}
                         >
-                          <div style={{ fontSize: 24 }}>{f.isPdf ? '📄' : '🖼️'}</div>
-                          <div style={{ fontWeight: 600 }}>{f.file_name}</div>
-                          <div>プレビューを表示できません</div>
+                          表示できません
                         </div>
                       )}
                       <div className="layout-label">{f.label || f.file_name}</div>
@@ -818,6 +806,7 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
                 </div>
               </div>
             )}
+
 
 
 
