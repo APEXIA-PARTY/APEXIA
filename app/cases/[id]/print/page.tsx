@@ -758,14 +758,15 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
             {layouts.length > 0 && (
               <div className="section">
                 <div className="section-title">⑦ レイアウト図</div>
+
                 <div className="layout-grid">
                   {layouts.map((f) => (
                     <div key={f.id} className="layout-item">
+
                       {f.displayUrl ? (
                         f.isPdf ? (
                           <iframe
-                            src={f.displayUrl}
-                            title={f.label ?? f.file_name}
+                            src={`${f.displayUrl}#toolbar=0&navpanes=0&scrollbar=0`}
                             style={{
                               width: '100%',
                               height: '800px',
@@ -800,7 +801,11 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
                           表示できません
                         </div>
                       )}
-                      <div className="layout-label">{f.label || f.file_name}</div>
+
+                      <div className="layout-label">
+                        {f.label || f.file_name}
+                      </div>
+
                     </div>
                   ))}
                 </div>
