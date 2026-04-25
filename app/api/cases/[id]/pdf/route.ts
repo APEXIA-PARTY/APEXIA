@@ -187,18 +187,19 @@ export async function GET(request: NextRequest, { params }: Params) {
     console.log('[PDF] filename:', displayName)
 
     // ─── 12. レスポンス ──────────────────────────────────────
-    return new NextResponse(finalPdfBytes.buffer, {
-      status: 200,
-      headers: {
-        'Content-Type':        'application/pdf',
-        'Content-Disposition': contentDispos,
-        'Content-Length':      String(finalPdfBytes.length),
-        'Cache-Control':       'no-store',
-        // fetch + blob 方式でファイル名を渡すためのカスタムヘッダー
-        // PdfDownloadButton.tsx でこの値を読んで anchor.download に使う
-        'X-Filename':          encodedName,
-      },
-    })
+    return new NextResponse(
+  finalPdfBytes.buffer.slice(
+    finalPdfBytes.byteOffset,
+    finalPdfBytes.byteOffset + finalPdfBytes.byteLength
+  ) as ArrayBuffer,
+  {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': contentDisposition,
+    },
+  }
+)
 
   } catch (err) {
     console.error('[PDF] generation error:', err)
