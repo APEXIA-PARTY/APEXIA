@@ -33,9 +33,9 @@ export async function GET(request: NextRequest) {
     })).filter(n => n.note)
 
     // 「その他」理由またはcancel_noteがある件の自由入力一覧
-    const otherNotes = [...new Set(
-      mc.map(c => c.cancel_note).filter((n): n is string => !!n)
-    )]
+    const otherNotes = Array.from(new Set(
+  mc.map(c => c.cancel_note).filter((n): n is string => !!n)
+))
 
     return {
       id: m.id, name: m.name, is_auto_cancel: m.is_auto_cancel,
