@@ -187,7 +187,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     console.log('[PDF] filename:', displayName)
 
     // ─── 12. レスポンス ──────────────────────────────────────
-    return new NextResponse(finalPdfBytes, {
+    return new NextResponse(finalPdfBytes.buffer, {
       status: 200,
       headers: {
         'Content-Type':        'application/pdf',
