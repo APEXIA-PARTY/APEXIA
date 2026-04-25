@@ -25,6 +25,7 @@ interface Props {
   floor:         string | null
   loadInTime:    string | null
   fullExitTime:  string | null
+  inquiryDate?: string | null
 }
 
 /**
