@@ -45,22 +45,33 @@ export function CaseHoldLogSection({ caseId, currentStatus, isEditable = true }:
   useEffect(() => { fetchLog() }, [caseId])
 
   const handleCreate = async () => {
-    if (!form.hold_date) { toast.error('仮押さえ日を入力してください'); return }
-    setSaving(true)
-    const res = await fetch(`/api/cases/${caseId}/hold`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ hold_date: form.hold_date, memo: form.memo || null }),
-    })
-    if (res.ok) {
-      await fetchLog()
-      toast.success('仮押さえを登録しました')
-    } else {
-      const err = await res.json().catch(() => ({}))
-      toast.error(err.message ?? '登録に失敗しました')
-    }
-    setSaving(false)
+  if (!form.hold_date) {
+    toast.error('仮押さえ日を入力してください')
+    return
   }
+
+  setSaving(true)
+
+  const res = await fetch(`/api/cases/${caseId}/hold`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      hold_date: form.hold_date,
+      release_date: form.release_date || undefined,
+      memo: form.memo || undefined,
+    }),
+  })
+
+  if (res.ok) {
+    await fetchLog()
+    toast.success('仮押さえを登録しました')
+  } else {
+    const err = await res.json().catch(() => ({}))
+    toast.error(err.message ?? '登録に失敗しました')
+  }
+
+  setSaving(false)
+}
 
   const handleUpdate = async () => {
     setSaving(true)
@@ -68,10 +79,10 @@ export function CaseHoldLogSection({ caseId, currentStatus, isEditable = true }:
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        hold_date:    form.hold_date    || null,
-        release_date: form.release_date || null,
-        memo:         form.memo         || null,
-      }),
+  hold_date: form.hold_date || undefined,
+  release_date: form.release_date || undefined,
+  memo: form.memo || undefined,
+}),
     })
     if (res.ok) {
       await fetchLog()

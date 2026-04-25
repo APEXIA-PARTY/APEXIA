@@ -27,6 +27,7 @@ interface MasterPageShellProps<T extends MasterItem> {
 export function MasterPageShell<T extends MasterItem>({
   config, isAdmin,
 }: MasterPageShellProps<T>) {
+  // ★ error と fetchAll を追加で受け取る
   const { items, loading, error, fetchAll, create, update, toggleActive, reorder } =
     useMasterData<T>({ apiPath: config.apiPath, queryParams: config.queryParams })
 
@@ -34,13 +35,26 @@ export function MasterPageShell<T extends MasterItem>({
   const [editTarget, setEditTarget] = useState<T | null>(null)
 
   const openCreate = () => { setEditTarget(null); setDialogOpen(true) }
-  const openEdit = (item: T) => { setEditTarget(item); setDialogOpen(true) }
+  const openEdit   = (item: T) => { setEditTarget(item); setDialogOpen(true) }
 
   const handleSubmit = async (values: any): Promise<boolean> => {
     return editTarget ? update(editTarget.id, values) : create(values)
   }
 
-  const initialValues = editTarget ? { ...editTarget } : config.prepareCreate?.() ?? {}
+  // 編集時: fields 定義に含まれるキー + id のみに絞り込む
+  // これにより created_at / updated_at / JOIN結果オブジェクト等の余分フィールドが
+  // フォームや PUT ボディに混入することを防ぐ
+  const initialValues = editTarget
+    ? (() => {
+        const allowedKeys = new Set([
+          'id',
+          ...config.fields.map((f) => f.name),
+        ])
+        return Object.fromEntries(
+          Object.entries(editTarget).filter(([k]) => allowedKeys.has(k))
+        )
+      })()
+    : config.prepareCreate?.() ?? {}
 
   return (
     <div className="space-y-4">
@@ -68,7 +82,7 @@ export function MasterPageShell<T extends MasterItem>({
         )}
       </div>
 
-      {/* エラー表示: APIエラー時に再取得ボタン付きで明示 */}
+      {/* ★ エラー表示: APIエラー時に再取得ボタン付きで明示 */}
       {error && (
         <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3">
           <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />

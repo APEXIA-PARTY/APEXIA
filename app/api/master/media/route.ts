@@ -1,18 +1,15 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server'
+import { createMasterHandlers, handleReorder } from '../_crud'
+import { mediaSchema } from '@/lib/validations/master'
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const { GET, POST } = createMasterHandlers({
+  tableName: 'media_master',
+  schema: mediaSchema,
+})
 
-export async function GET() {
-    const { data, error } = await supabase
-        .from('media_master')
-        .select('id, name')
-        .eq('is_active', true)
-        .order('display_order')
+export { GET, POST }
 
-    if (error) return NextResponse.json([], { status: 500 })
-    return NextResponse.json(data ?? [])
+// 👇これが無いと405になる
+export async function PATCH(request: NextRequest) {
+  return handleReorder(request, 'media_master')
 }

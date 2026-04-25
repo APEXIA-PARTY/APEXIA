@@ -55,11 +55,12 @@ export async function POST(request: NextRequest, { params }: Params) {
   const { data, error: dbError } = await supabase
     .from('case_hold_logs')
     .insert({
-      case_id:    params.id,
-      hold_date:  parsed.data.hold_date ?? null,
-      memo:       parsed.data.memo ?? null,
-      created_by: user?.id ?? null,
-    })
+  case_id: params.id,
+  hold_date: parsed.data.hold_date ?? null,
+  release_date: parsed.data.release_date ?? null,
+  memo: parsed.data.memo ?? null,
+  created_by: user?.id ?? null,
+})
     .select()
     .single()
 

@@ -1,17 +1,12 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server'
+import { createMasterHandlers, handleReorder } from '../_crud'
+import { floorSchema } from '@/lib/validations/master'
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+export const { GET, POST } = createMasterHandlers({
+  tableName: 'floor_master',
+  schema: floorSchema,
+})
 
-export async function GET() {
-    const { data } = await supabase
-        .from('floor_master')
-        .select('id, name')
-        .eq('is_active', true)
-        .order('display_order')
-
-    return NextResponse.json(data ?? [])
+export async function PATCH(request: NextRequest) {
+  return handleReorder(request, 'floor_master')
 }

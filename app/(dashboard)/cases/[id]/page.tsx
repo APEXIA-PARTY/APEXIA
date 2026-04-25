@@ -69,19 +69,24 @@ export default async function CaseDetailPage({ params }: { params: { id: string 
             {isEditable ? (
               <>
                 {/* Googleカレンダー */}
-                <GCalButton
-                  caseId={params.id}
-                  company={c.company}
-                  eventName={c.event_name}
-                  contact={c.contact}
-                  eventDate={c.event_date}
-                  startTime={c.start_time}
-                  endTime={c.end_time}
-                  notes={c.notes}
-                  gcalEventId={c.gcal_event_id}
-                  appBaseUrl={appBaseUrl}
-                  isEditable={isEditable}
-                />
+  <GCalButton
+  caseId={params.id}
+  company={c.company}
+  eventName={c.event_name}
+  contact={c.contact}
+  inquiryDate={c.inquiry_date}
+  eventDate={c.event_date}
+  startTime={c.start_time}
+  endTime={c.end_time}
+  notes={c.notes}
+  gcalEventId={c.gcal_event_id}
+  appBaseUrl={appBaseUrl}
+  isEditable={isEditable}
+  status={c.status}
+  floor={(c.floor_master as any)?.name ?? null}
+  loadInTime={c.load_in_time}
+  fullExitTime={c.full_exit_time}
+/>
                 <Link
                   href={`/cases/${params.id}/edit`}
                   className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-muted"

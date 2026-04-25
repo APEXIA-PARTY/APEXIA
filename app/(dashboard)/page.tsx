@@ -149,71 +149,94 @@ export default async function DashboardPage() {
       />
 
       {/* KPIカード（当月） */}
-      <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          当月実績（{format(now, 'M月')}）
-        </p>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-12">
-          <KpiCard label="問合せ件数" value={mk.inquiry} icon={Users} color="blue" />
-          <KpiCard label="下見件数" value={mk.preview} icon={Calendar} color="purple" />
-          <KpiCard label="→下見率" value={`${mk.previewRate}%`} icon={TrendingUp} color="purple" />
-          <KpiCard label="確定件数" value={mk.confirmed} icon={CheckCircle} color="green" />
-          <KpiCard label="キャンセル" value={mk.cancelManual + mk.cancelAuto} icon={XCircle} color="red" />
-          <KpiCard label="下見前ｷｬﾝ" value={mk.cancelBeforePreview} icon={XCircle} color="red" />
-          <KpiCard label="下見後ｷｬﾝ" value={mk.cancelAfterPreview} icon={XCircle} color="red" />
-          <KpiCard label="確定売上" value={formatCurrencyShort(mk.revenue)} icon={DollarSign} color="green" />
-          <KpiCard
-            label="平均単価"
-            value={mk.avgPrice > 0 ? formatCurrencyShort(mk.avgPrice) : '—'}
-            icon={BarChart2}
-            color="blue"
-          />
-          <KpiCard label="→確定率" value={`${mk.cvRate}%`} icon={TrendingUp} color="orange" />
-          <KpiCard
-            label="年間売上"
-            value={formatCurrencyShort(yk.revenue)}
-            sub={`確定${yk.confirmed}件`}
-            icon={TrendingUp}
-            color="green"
-          />
-          <KpiCard label="自動ｷｬﾝ累計" value={autoTotal} icon={AlertTriangle} color="red" />
-        </div>
-      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-12">
+
+  <KpiCard label="問合せ" value={mk.inquiry} icon={Users} color="blue" />
+  <KpiCard label="下見" value={mk.preview} icon={Calendar} color="purple" />
+  <KpiCard label="→下見率" value={`${mk.previewRate}%`} icon={TrendingUp} color="purple" />
+  <KpiCard label="確定" value={mk.confirmed} icon={CheckCircle} color="green" />
+
+  <KpiCard label="問合せ→確定率" value={`${mk.cvRate}%`} icon={TrendingUp} color="orange" />
+  <KpiCard label="下見→確定率" value={`${mk.confirmRate}%`} icon={TrendingUp} color="orange" />
+
+  <KpiCard label="下見前ｷｬﾝ" value={mk.cancelBeforePreview} icon={XCircle} color="red" />
+  <KpiCard label="下見後ｷｬﾝ" value={mk.cancelAfterPreview} icon={XCircle} color="red" />
+  <KpiCard label="自動ｷｬﾝ累計" value={autoTotal} icon={AlertTriangle} color="red" />
+
+  <KpiCard label="確定売上" value={formatCurrencyShort(mk.revenue)} icon={DollarSign} color="green" />
+  <KpiCard
+    label="平均単価"
+    value={mk.avgPrice > 0 ? formatCurrencyShort(mk.avgPrice) : '—'}
+    icon={BarChart2}
+    color="blue"
+  />
+  <KpiCard
+    label="年間売上"
+    value={formatCurrencyShort(yk.revenue)}
+    sub={`確定${yk.confirmed}件`}
+    icon={TrendingUp}
+    color="green"
+  />
+
+</div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* 月別推移グラフ */}
-        <div className="lg:col-span-2 rounded-lg border border-border bg-card p-5">
-          <h2 className="mb-4 text-sm font-semibold">月別 問合せ・確定件数推移（{thisYear}年）</h2>
-          <div className="flex h-36 items-end gap-1.5">
-            {monthlyTrend.map((m) => (
-              <div key={m.label} className="flex flex-1 flex-col items-center gap-0.5">
-                <div className="flex w-full flex-col-reverse gap-0.5">
-                  <div
-                    className="min-h-[2px] w-full rounded-t bg-blue-200"
-                    style={{ height: `${(m.inquiry / maxInquiry) * 120}px` }}
-                    title={`問合せ ${m.inquiry}件`}
-                  />
-                  <div
-                    className="min-h-[2px] w-full rounded-t bg-primary/80"
-                    style={{ height: `${(m.confirmed / maxInquiry) * 120}px` }}
-                    title={`確定 ${m.confirmed}件`}
-                  />
-                </div>
-                <span className="text-[10px] text-muted-foreground">{m.label}</span>
-              </div>
-            ))}
+<div className="lg:col-span-2 rounded-lg border border-border bg-card p-5">
+  <h2 className="mb-4 text-sm font-semibold">
+    月別 問合せ・確定件数推移（{thisYear}年）
+    <span className="ml-2 text-xs text-muted-foreground">※単位：件</span>
+  </h2>
+
+  <div className="flex h-44 items-end gap-1.5">
+    {monthlyTrend.map((m) => (
+      <div key={m.label} className="flex flex-1 flex-col items-center gap-1">
+        <div className="flex h-full w-full flex-col-reverse gap-1">
+          {/* 問合せ */}
+          <div className="relative w-full">
+            {m.inquiry > 0 && (
+              <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] text-gray-600">
+                {m.inquiry}
+              </span>
+            )}
+            <div
+              className="min-h-[2px] w-full rounded-t bg-blue-200"
+              style={{ height: `${(m.inquiry / maxInquiry) * 120}px` }}
+              title={`問合せ ${m.inquiry}件`}
+            />
           </div>
-          <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <span className="inline-block h-2 w-3 rounded bg-blue-200" />
-              問合せ
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="inline-block h-2 w-3 rounded bg-primary/80" />
-              確定
-            </span>
+
+          {/* 確定 */}
+          <div className="relative w-full">
+            {m.confirmed > 0 && (
+              <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-blue-700">
+                {m.confirmed}
+              </span>
+            )}
+            <div
+              className="min-h-[2px] w-full rounded-t bg-primary/80"
+              style={{ height: `${(m.confirmed / maxInquiry) * 120}px` }}
+              title={`確定 ${m.confirmed}件`}
+            />
           </div>
         </div>
+
+        <span className="text-[10px] text-muted-foreground">{m.label}</span>
+      </div>
+    ))}
+  </div>
+
+  <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
+    <span className="flex items-center gap-1">
+      <span className="inline-block h-2 w-3 rounded bg-blue-200" />
+      問合せ
+    </span>
+    <span className="flex items-center gap-1">
+      <span className="inline-block h-2 w-3 rounded bg-primary/80" />
+      確定
+    </span>
+  </div>
+</div>
 
         {/* 直近の確定案件 */}
         <div className="rounded-lg border border-border bg-card p-5">

@@ -11,7 +11,7 @@ const baseSchema = {
 export const mediaSchema = z.object({
   ...baseSchema,
   monthly_cost: z.number().int().min(0).nullable().optional(),
-  note:         z.string().max(500).optional().or(z.literal('')),
+  note:         z.string().max(500).nullable().optional(),
 })
 export type MediaFormValues = z.infer<typeof mediaSchema>
 

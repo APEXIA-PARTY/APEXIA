@@ -63,37 +63,17 @@ export function CaseStatusChanger({
 
     setLoading(true)
     try {
-      const currentRes = await fetch(`/api/cases/${caseId}`)
-      if (!currentRes.ok) throw new Error('案件の取得に失敗しました')
-      const current = await currentRes.json()
+  const payload = {
+    status,
+    cancel_reason_id: isCancelled ? cancelReasonId || null : null,
+    cancel_note: isCancelled ? cancelNote : null,
+  }
 
-      const payload = {
-        ...current,
-        // リレーションオブジェクトを除去（PUT は FK のみ送る）
-        media_master: undefined,
-        contact_method_master: undefined,
-        floor_master: undefined,
-        event_category_master: undefined,
-        event_subcategory_master: undefined,
-        cancel_reason_master: undefined,
-        case_options: undefined,
-        case_checklist: undefined,
-        case_files: undefined,
-        case_hold_logs: undefined,
-        case_history: undefined,
-        // has_previewed はフロントから送らない。API側のルールで決定する
-        has_previewed: undefined,
-        // 変更フィールド
-        status,
-        cancel_reason_id: isCancelled ? cancelReasonId || null : null,
-        cancel_note: isCancelled ? cancelNote : null,
-      }
-
-      const res = await fetch(`/api/cases/${caseId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
+  const res = await fetch(`/api/cases/${caseId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
@@ -117,7 +97,7 @@ export function CaseStatusChanger({
     setCancelNote(currentCancelNote ?? '')
     setOpen(false)
   }
-
+console.log('CaseStatusChanger rendered', { caseId, open, status })
   return (
     <div className="flex flex-wrap items-center gap-3">
       <div className="flex items-center gap-2">
@@ -134,9 +114,13 @@ export function CaseStatusChanger({
 
         {!autoCancel && (
           <button
-            onClick={() => setOpen((o) => !o)}
-            className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted"
-          >
+  type="button"
+  onClick={() => {
+  console.log('変更ボタン押された')
+  setOpen((o) => !o)
+}}
+  className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted"
+>
             変更
             <ChevronDown className={cn('h-3 w-3 transition-transform', open && 'rotate-180')} />
           </button>

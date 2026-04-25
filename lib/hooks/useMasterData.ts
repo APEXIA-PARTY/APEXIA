@@ -18,6 +18,11 @@ interface UseMasterDataOptions {
 
 /**
  * マスタデータの取得・追加・更新・並び替え・無効化を扱う共通フック
+ *
+ * 修正点:
+ *   - update() 内の toast.success を廃止し、呼び出し元が通知を制御できるようにした
+ *   - toggleActive の二重トースト問題を解消
+ *   - create/update は成功可否の boolean のみ返す（通知は呼び出し元で行う）
  */
 export function useMasterData<T extends MasterItem>({ apiPath, queryParams = '' }: UseMasterDataOptions) {
   const [items, setItems] = useState<T[]>([])
@@ -66,7 +71,12 @@ export function useMasterData<T extends MasterItem>({ apiPath, queryParams = '' 
   }
 
   // ─── 更新 ─────────────────────────────────────────────────
-  const update = async (id: string, values: Partial<T>): Promise<boolean> => {
+  // toast は呼び出し元が責任を持つ（toggleActive との二重トーストを防ぐ）
+  const update = async (
+    id: string,
+    values: Partial<T>,
+    options: { silent?: boolean } = {}
+  ): Promise<boolean> => {
     try {
       const res = await fetch(`${apiPath}/${id}`, {
         method: 'PUT',
@@ -78,7 +88,9 @@ export function useMasterData<T extends MasterItem>({ apiPath, queryParams = '' 
         toast.error(err.message ?? '更新に失敗しました')
         return false
       }
-      toast.success('更新しました')
+      if (!options.silent) {
+        toast.success('更新しました')
+      }
       await fetchAll()
       return true
     } catch {
@@ -88,9 +100,10 @@ export function useMasterData<T extends MasterItem>({ apiPath, queryParams = '' 
   }
 
   // ─── 無効化トグル ─────────────────────────────────────────
+  // silent: true にして update 側のトーストを抑制し、ここで1回だけ表示する
   const toggleActive = async (item: T): Promise<void> => {
     const next = !item.is_active
-    const ok = await update(item.id, { is_active: next } as Partial<T>)
+    const ok = await update(item.id, { is_active: next } as Partial<T>, { silent: true })
     if (ok) {
       toast.success(next ? '有効にしました' : '無効にしました')
     }
@@ -101,8 +114,6 @@ export function useMasterData<T extends MasterItem>({ apiPath, queryParams = '' 
     // 楽観的更新
     setItems(reordered)
     try {
-      // PATCH /api/master/{table} で並び替えを送信
-      // （PUT は /api/master/{table}/{id} の単件更新に使うため PATCH を使用）
       const res = await fetch(apiPath, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },

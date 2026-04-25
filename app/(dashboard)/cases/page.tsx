@@ -16,6 +16,8 @@ interface SearchParams {
   page?: string
   sortBy?: string
   sortOrder?: string
+  year?: string
+  month?: string
 }
 
 export default async function CasesPage({
@@ -32,7 +34,7 @@ export default async function CasesPage({
 
   const page = Number(searchParams.page ?? 1)
   const pageSize = 20
-  const sortBy = (searchParams.sortBy as string) || 'inquiry_date'
+  const sortBy = searchParams.sortBy || 'inquiry_date'
   const sortOrder = searchParams.sortOrder === 'asc'
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
@@ -41,7 +43,7 @@ export default async function CasesPage({
     .from('cases')
     .select(
       `id, company, contact, event_name, event_date, inquiry_date,
-       status, auto_cancel, estimate_amount, updated_at,
+       status, auto_cancel, estimate_amount, updated_at, media_id, floor_id,
        media_master(name), floor_master(name)`,
       { count: 'exact' }
     )
@@ -63,6 +65,26 @@ export default async function CasesPage({
     query = query.eq('floor_id', searchParams.floor_id)
   }
 
+  // 年・月フィルター（inquiry_date ベース）
+  if (searchParams.year) {
+    query = query.not('inquiry_date', 'is', null)
+
+    const y = searchParams.year
+
+    if (searchParams.month) {
+      const m = searchParams.month.padStart(2, '0')
+      const lastDay = new Date(Number(y), Number(searchParams.month), 0).getDate()
+
+      query = query
+        .gte('inquiry_date', `${y}-${m}-01`)
+        .lte('inquiry_date', `${y}-${m}-${String(lastDay).padStart(2, '0')}`)
+    } else {
+      query = query
+        .gte('inquiry_date', `${y}-01-01`)
+        .lte('inquiry_date', `${y}-12-31`)
+    }
+  }
+
   query = query.order(sortBy, { ascending: sortOrder }).range(from, to)
 
   const { data: cases, count } = await query
@@ -77,10 +99,26 @@ export default async function CasesPage({
   const safeFloorList = floorList ?? []
   const totalPages = Math.ceil((count ?? 0) / pageSize)
 
+  const currentYear = new Date().getFullYear()
+  const yearOptions = Array.from({ length: 5 }, (_, i) => String(currentYear - i))
+
+  const statusLabel =
+    STATUS_LIST.find((s) => s.value === searchParams.status)?.label ?? searchParams.status ?? ''
+
+  const filterLabel = [
+    searchParams.year && `${searchParams.year}年`,
+    searchParams.month && `${searchParams.month}月`,
+    statusLabel,
+  ]
+    .filter(Boolean)
+    .join(' / ')
+
   const buildUrl = (overrides: Record<string, string | undefined>) => {
     const params = new URLSearchParams()
     const merged = {
       search: searchParams.search,
+      year: searchParams.year,
+      month: searchParams.month,
       status: searchParams.status,
       media_id: searchParams.media_id,
       floor_id: searchParams.floor_id,
@@ -100,7 +138,7 @@ export default async function CasesPage({
     <div className="space-y-4">
       <PageHeader
         title="案件一覧"
-        description={`全 ${count ?? 0} 件`}
+        description={filterLabel ? `${filterLabel}：${count ?? 0}件` : `全 ${count ?? 0} 件`}
         actions={
           <Link
             href="/cases/new"
@@ -114,15 +152,34 @@ export default async function CasesPage({
 
       <div className="rounded-lg border border-border bg-card p-4">
         <form method="GET" action="/cases" className="flex flex-wrap items-end gap-3">
-          <div className="relative min-w-[180px] flex-1">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              name="search"
-              defaultValue={searchParams.search}
-              placeholder="会社名・担当者・イベント名"
-              className="w-full rounded-md border border-input bg-background py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
+          <select
+            name="year"
+            defaultValue={searchParams.year ?? ''}
+            className="min-w-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="">年</option>
+            {yearOptions.map((y) => (
+              <option key={y} value={y}>
+                {y}年
+              </option>
+            ))}
+          </select>
+
+          <select
+            name="month"
+            defaultValue={searchParams.month ?? ''}
+            className="min-w-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="">月</option>
+            {Array.from({ length: 12 }, (_, i) => {
+              const m = String(i + 1)
+              return (
+                <option key={m} value={m}>
+                  {m}月
+                </option>
+              )
+            })}
+          </select>
 
           <select
             name="status"
@@ -163,6 +220,16 @@ export default async function CasesPage({
             ))}
           </select>
 
+          <div className="relative min-w-[180px] flex-1">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              name="search"
+              defaultValue={searchParams.search}
+              placeholder="会社名・担当者・イベント名"
+              className="w-full rounded-md border border-input bg-background py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+
           <button
             type="submit"
             className="flex items-center gap-1.5 rounded-md bg-secondary px-4 py-2 text-sm font-medium hover:bg-secondary/80"
@@ -192,8 +259,9 @@ export default async function CasesPage({
             <Link
               key={s.key}
               href={buildUrl({ sortBy: s.key, sortOrder: nextOrder, page: '1' })}
-              className={`rounded px-2 py-1 transition-colors hover:bg-muted ${isActive ? 'bg-muted font-medium text-foreground' : ''
-                }`}
+              className={`rounded px-2 py-1 transition-colors hover:bg-muted ${
+                isActive ? 'bg-muted font-medium text-foreground' : ''
+              }`}
             >
               {s.label}
               {isActive && (sortOrder ? ' ↑' : ' ↓')}

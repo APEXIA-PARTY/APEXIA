@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { Calendar, CheckCircle2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatTime } from '@/lib/utils/format'
+import { STATUS_CONFIG } from '@/lib/constants/status'
+import type { CaseStatus } from '@/types/database'
 
 interface Props {
   caseId:        string
@@ -18,6 +20,11 @@ interface Props {
   gcalEventId:   string | null   // 登録済みの場合はイベントID
   appBaseUrl:    string           // 案件詳細URL生成用
   isEditable:    boolean          // admin/staff のみ操作可
+  // 追加項目
+  status:        string | null
+  floor:         string | null
+  loadInTime:    string | null
+  fullExitTime:  string | null
 }
 
 /**
@@ -31,6 +38,7 @@ interface Props {
 export function GCalButton({
   caseId, company, eventName, contact, eventDate,
   startTime, endTime, notes, gcalEventId, appBaseUrl, isEditable,
+  status, floor, loadInTime, fullExitTime,
 }: Props) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
@@ -39,27 +47,58 @@ export function GCalButton({
   const buildGCalUrl = (): string => {
     const title = [company, eventName].filter(Boolean).join(' ')
 
-    // 日付・時間を Google Calendar 形式に変換 (YYYYMMDDTHHmmss)
+    // ステータス・過去判定で終日 or 時間付きを切り替え
+    // 以下ステータス、または eventDate が今日より前の場合は終日予定
+    const ALL_DAY_STATUSES = ['new', 'contacted', 'preview_scheduled', 'previewed', 'cancelled']
+    const today    = new Date().toISOString().slice(0, 10)
+    const isPast   = !!eventDate && eventDate < today
+    const isAllDay = !status || ALL_DAY_STATUSES.includes(status) || isPast
+
     let dates = ''
-    if (eventDate && startTime && endTime) {
-      const d  = eventDate.replace(/-/g, '')
-      const st = startTime.replace(':', '').slice(0, 4).padEnd(4, '0') + '00'
-      const et = endTime.replace(':', '').slice(0, 4).padEnd(4, '0') + '00'
-      dates = `${d}T${st}/${d}T${et}`
-    } else if (eventDate) {
+    if (eventDate) {
       const d = eventDate.replace(/-/g, '')
-      dates = `${d}/${d}`
+      if (isAllDay) {
+        // 終日形式: YYYYMMDD/YYYYMMDD+1（Google Calendar 仕様: 終了日は翌日）
+        const nextDay = new Date(eventDate)
+        nextDay.setDate(nextDay.getDate() + 1)
+        const dNext = nextDay.toISOString().slice(0, 10).replace(/-/g, '')
+        dates = `${d}/${dNext}`
+      } else {
+        // 時間付き形式: YYYYMMDDTHHmmss/YYYYMMDDTHHmmss
+        // loadInTime + fullExitTime が両方あればそちらを優先
+        const s = loadInTime   ?? startTime
+        const e = fullExitTime ?? endTime
+        if (s && e) {
+          const st = s.replace(':', '').slice(0, 4).padEnd(4, '0') + '00'
+          const et = e.replace(':', '').slice(0, 4).padEnd(4, '0') + '00'
+          dates = `${d}T${st}/${d}T${et}`
+        } else {
+          // 時間が取れない場合は終日にフォールバック（翌日終了）
+          const nextDayFb = new Date(eventDate)
+          nextDayFb.setDate(nextDayFb.getDate() + 1)
+          const dNextFb = nextDayFb.toISOString().slice(0, 10).replace(/-/g, '')
+          dates = `${d}/${dNextFb}`
+        }
+      }
     }
 
     // 案件詳細URL（カレンダーの説明欄に記載）
     const detailUrl = `${appBaseUrl}/cases/${caseId}`
 
+    const statusLabel = status
+      ? (STATUS_CONFIG[status as CaseStatus]?.label ?? status)
+      : null
+
     const description = [
       `会社名: ${company}`,
-      contact    ? `担当者: ${contact}` : null,
-      eventName  ? `イベント名: ${eventName}` : null,
-      startTime  ? `時間: ${formatTime(startTime)}〜${formatTime(endTime)}` : null,
-      notes      ? `備考: ${notes}` : null,
+      contact       ? `担当者: ${contact}`                                   : null,
+      statusLabel   ? `ステータス: ${statusLabel}`                           : null,
+      floor         ? `フロア: ${floor}`                                     : null,
+      loadInTime    ? `入り時間: ${formatTime(loadInTime)}`                  : null,
+      fullExitTime  ? `完全撤収時間: ${formatTime(fullExitTime)}`            : null,
+      eventName     ? `イベント名: ${eventName}`                             : null,
+      startTime     ? `時間: ${formatTime(startTime)}〜${formatTime(endTime)}` : null,
+      notes         ? `備考: ${notes}`                                       : null,
       '',
       '▼ 案件詳細（APEXIA）',
       detailUrl,

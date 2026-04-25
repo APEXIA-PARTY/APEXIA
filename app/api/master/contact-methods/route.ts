@@ -1,17 +1,14 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server'
+import { createMasterHandlers, handleReorder } from '../_crud'
+import { contactMethodSchema } from '@/lib/validations/master'
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const { GET, POST } = createMasterHandlers({
+  tableName: 'contact_method_master',
+  schema: contactMethodSchema,
+})
 
-export async function GET() {
-    const { data } = await supabase
-        .from('contact_method_master')
-        .select('id, name')
-        .eq('is_active', true)
-        .order('display_order')
+export { GET, POST }
 
-    return NextResponse.json(data ?? [])
+export async function PATCH(request: NextRequest) {
+  return handleReorder(request, 'contact_method_master')
 }

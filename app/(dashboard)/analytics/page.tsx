@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { TrendingUp, BarChart2, Users, Calendar, XCircle, DollarSign } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
@@ -86,6 +86,18 @@ function BarLineChart({ data, maxY }: {
       ctx.beginPath(); ctx.roundRect(x, pad.top + cH - h, bW, h, [3, 3, 0, 0]); ctx.fill()
     })
 
+    // 棒の上に数値表示（問合せ）
+ctx.fillStyle = '#333'
+ctx.font = '10px sans-serif'
+ctx.textAlign = 'center'
+
+data.forEach((d, i) => {
+  if (d.bar === 0) return
+  const x = pad.left + bGap * i + bGap / 2
+  const y = pad.top + cH - d.bar * scale - 4
+  ctx.fillText(String(d.bar), x, y)
+})
+
     // 折れ線グラフ（確定件数）
     ctx.strokeStyle = '#4472C4'; ctx.lineWidth = 2; ctx.beginPath()
     data.forEach((d, i) => {
@@ -101,6 +113,17 @@ function BarLineChart({ data, maxY }: {
       const y = pad.top + cH - d.line * scale
       ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fillStyle = '#4472C4'; ctx.fill()
     })
+
+    // 線の上に数値表示（確定）
+ctx.fillStyle = '#4472C4'
+ctx.font = '10px sans-serif'
+
+data.forEach((d, i) => {
+  if (d.line === 0) return
+  const x = pad.left + bGap * i + bGap / 2
+  const y = pad.top + cH - d.line * scale - 8
+  ctx.fillText(String(d.line), x, y)
+})
 
     // X軸ラベル
     ctx.fillStyle = '#888'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center'
@@ -213,9 +236,12 @@ function MonthlyTab({ year, onYearChange, years }: { year: string; onYearChange:
           <table className="w-full text-sm">
             <thead><tr className="border-b border-border bg-muted/40">
               <TH>月</TH><TH right>問合せ</TH><TH right>下見</TH><TH right>確定</TH>
-              <TH right>ｷｬﾝｾﾙ(手)</TH><TH right>ｷｬﾝｾﾙ(自)</TH>
+              <TH right>ｷｬﾝ(手)</TH><TH right>ｷｬﾝ(自)</TH>
+              <TH right>下見前ｷｬﾝ</TH><TH right>下見後ｷｬﾝ</TH>
               <TH right>見積合計</TH><TH right>確定売上</TH><TH right>平均単価</TH>
-              <TH right>→下見率</TH><TH right>→確定率</TH>
+              <TH right>→下見率</TH>
+<TH right>下見→確定率</TH>
+<TH right>問合せ→確定率</TH>
             </tr></thead>
             <tbody className="divide-y divide-border">
               {monthly.filter((m: any) => m.inquiry > 0 || m.cancelManual > 0 || m.cancelAuto > 0).map((m: any) => (
@@ -226,11 +252,14 @@ function MonthlyTab({ year, onYearChange, years }: { year: string; onYearChange:
                   <TD right bold color="text-green-700">{fmtNum(m.confirmed)}</TD>
                   <TD right color="text-red-500">{m.cancelManual}</TD>
                   <TD right color="text-red-800">{m.cancelAuto}</TD>
+                  <TD right color="text-red-400">{m.cancelBeforePreview}</TD>
+                  <TD right color="text-red-600">{m.cancelAfterPreview}</TD>
                   <TD right color="text-orange-600">{m.estimateTotal > 0 ? fmtYen(m.estimateTotal) : '—'}</TD>
                   <TD right bold color="text-green-700">{m.revenue > 0 ? fmtYen(m.revenue) : '—'}</TD>
                   <TD right>{m.avgPrice > 0 ? fmtYen(m.avgPrice) : '—'}</TD>
                   <TD right>{fmtPct(m.previewRate)}</TD>
-                  <TD right bold>{fmtPct(m.cvRate)}</TD>
+<TD right>{fmtPct(m.confirmRate)}</TD>
+<TD right bold>{fmtPct(m.cvRate)}</TD>
                 </tr>
               ))}
               {/* 合計行 */}
@@ -241,11 +270,14 @@ function MonthlyTab({ year, onYearChange, years }: { year: string; onYearChange:
                 <TD right color="text-green-700">{fmtNum(data.total.confirmed)}</TD>
                 <TD right color="text-red-500">{data.total.cancelManual}</TD>
                 <TD right color="text-red-800">{data.total.cancelAuto}</TD>
+                <TD right color="text-red-400">{data.total.cancelBeforePreview}</TD>
+                <TD right color="text-red-600">{data.total.cancelAfterPreview}</TD>
                 <TD right color="text-orange-600">{fmtYen(data.total.estimateTotal)}</TD>
                 <TD right bold color="text-green-700">{fmtYen(data.total.revenue)}</TD>
                 <TD right>{data.total.avgPrice > 0 ? fmtYen(data.total.avgPrice) : '—'}</TD>
                 <TD right>{fmtPct(data.total.previewRate)}</TD>
-                <TD right bold>{fmtPct(data.total.cvRate)}</TD>
+<TD right>{fmtPct(data.total.confirmRate)}</TD>
+<TD right bold>{fmtPct(data.total.cvRate)}</TD>
               </tr>)}
             </tbody>
           </table>
@@ -267,6 +299,7 @@ function YearlyTab() {
           <thead><tr className="border-b border-border bg-muted/40">
             <TH>年</TH><TH right>問合せ</TH><TH right>下見</TH><TH right>確定</TH>
             <TH right>ｷｬﾝ(手)</TH><TH right>ｷｬﾝ(自)</TH>
+            <TH right>下見前ｷｬﾝ</TH><TH right>下見後ｷｬﾝ</TH>
             <TH right>確定売上</TH><TH right>平均単価</TH>
             <TH right>前年比(件)</TH><TH right>前年比(売上)</TH>
           </tr></thead>
@@ -279,6 +312,8 @@ function YearlyTab() {
                 <TD right bold color="text-green-700">{fmtNum(y.confirmed)}</TD>
                 <TD right color="text-red-500">{y.cancelManual}</TD>
                 <TD right color="text-red-800">{y.cancelAuto}</TD>
+                <TD right color="text-red-400">{y.cancelBeforePreview}</TD>
+                <TD right color="text-red-600">{y.cancelAfterPreview}</TD>
                 <TD right bold color="text-green-700">{fmtYen(y.revenue)}</TD>
                 <TD right>{y.avgPrice > 0 ? fmtYen(y.avgPrice) : '—'}</TD>
                 <TD right color={y.yoyInquiry === null ? '' : y.yoyInquiry >= 100 ? 'text-green-600' : 'text-red-500'}>{fmtYoY(y.yoyInquiry)}</TD>
@@ -348,11 +383,15 @@ function GenericMasterTab({ apiPath, label, columns }: {
               {(data.rows ?? []).map((r: any) => (
                 <tr key={r.id} className="hover:bg-muted/20">
                   <TD>{r.name}</TD>
-                  {columns.map(c => (
-                    <TD key={c.key} right={c.right} color={c.color}>
-                      {c.fmt ? c.fmt(r[c.key]) : (r[c.key] ?? '—')}
-                    </TD>
-                  ))}
+                  {columns.map(c => {
+                    const raw = r[c.key]
+                    const val = raw === undefined || raw === null ? 0 : raw
+                    return (
+                      <TD key={c.key} right={c.right} color={c.color}>
+                        {c.fmt ? c.fmt(val) : val}
+                      </TD>
+                    )
+                  })}
                 </tr>
               ))}
             </tbody>
@@ -398,35 +437,54 @@ function EventCategoriesTab() {
             </tr></thead>
             <tbody className="divide-y divide-border">
               {(data.rows ?? []).map((r: any) => (
-                <>
-                  <tr key={r.id} className="hover:bg-muted/20 cursor-pointer" onClick={() => toggleExpand(r.id)}>
-                    <TD><span className="flex items-center gap-1">{r.subcategories?.length > 0 && <span className="text-muted-foreground">{expanded.has(r.id) ? '▼' : '▶'}</span>}<span className="font-medium">{r.name}</span></span></TD>
-                    <TD right>{fmtNum(r.inquiry)}</TD>
-                    <TD right>{fmtPct(r.inquiryShare)}</TD>
-                    <TD right bold color="text-green-700">{fmtNum(r.confirmed)}</TD>
-                    <TD right>{fmtPct(r.confirmShare)}</TD>
-                    <TD right color="text-green-700">{r.revenue > 0 ? fmtYen(r.revenue) : '—'}</TD>
-                    <TD right>{r.avgPrice > 0 ? fmtYen(r.avgPrice) : '—'}</TD>
-                    <TD right bold>{fmtPct(r.cvRate)}</TD>
-                  </tr>
-                  {expanded.has(r.id) && (r.subcategories ?? []).map((s: any) => (
-                    <tr key={s.id} className="bg-muted/20">
-                      <TD><span className="ml-6 text-muted-foreground">└ {s.name}</span></TD>
-                      <TD right>{fmtNum(s.inquiry)}</TD><TD right>{fmtPct(s.inquiryShare)}</TD>
-                      <TD right>{fmtNum(s.confirmed)}</TD><TD right>{fmtPct(s.confirmShare)}</TD>
-                      <TD right>{s.revenue > 0 ? fmtYen(s.revenue) : '—'}</TD>
-                      <TD right>{s.avgPrice > 0 ? fmtYen(s.avgPrice) : '—'}</TD>
-                      <TD right>{fmtPct(s.cvRate)}</TD>
-                    </tr>
-                  ))}
-                  {expanded.has(r.id) && (r.subcategories ?? []).some((s: any) => s.otherNotes?.length > 0) && (
-                    <tr key={`${r.id}-notes`}><td colSpan={8} className="px-6 py-2 bg-yellow-50">
-                      <span className="text-xs text-yellow-800 font-medium">「その他」自由入力: </span>
-                      <span className="text-xs text-yellow-700">{(r.subcategories ?? []).flatMap((s: any) => s.otherNotes ?? []).join(' / ')}</span>
-                    </td></tr>
-                  )}
-                </>
-              ))}
+  <Fragment key={r.id}>
+    <tr className="hover:bg-muted/20 cursor-pointer" onClick={() => toggleExpand(r.id)}>
+      <TD>
+        <span className="flex items-center gap-1">
+          {r.subcategories?.length > 0 && (
+            <span className="text-muted-foreground">
+              {expanded.has(r.id) ? '▼' : '▶'}
+            </span>
+          )}
+          <span className="font-medium">{r.name}</span>
+        </span>
+      </TD>
+      <TD right>{fmtNum(r.inquiry)}</TD>
+      <TD right>{fmtPct(r.inquiryShare)}</TD>
+      <TD right bold color="text-green-700">{fmtNum(r.confirmed)}</TD>
+      <TD right>{fmtPct(r.confirmShare)}</TD>
+      <TD right color="text-green-700">{r.revenue > 0 ? fmtYen(r.revenue) : '—'}</TD>
+      <TD right>{r.avgPrice > 0 ? fmtYen(r.avgPrice) : '—'}</TD>
+      <TD right bold>{fmtPct(r.cvRate)}</TD>
+    </tr>
+
+    {expanded.has(r.id) && (r.subcategories ?? []).map((s: any) => (
+      <tr key={s.id} className="bg-muted/20">
+        <TD><span className="ml-6 text-muted-foreground">└ {s.name}</span></TD>
+        <TD right>{fmtNum(s.inquiry)}</TD>
+        <TD right>{fmtPct(s.inquiryShare)}</TD>
+        <TD right>{fmtNum(s.confirmed)}</TD>
+        <TD right>{fmtPct(s.confirmShare)}</TD>
+        <TD right>{s.revenue > 0 ? fmtYen(s.revenue) : '—'}</TD>
+        <TD right>{s.avgPrice > 0 ? fmtYen(s.avgPrice) : '—'}</TD>
+        <TD right>{fmtPct(s.cvRate)}</TD>
+      </tr>
+    ))}
+
+    {expanded.has(r.id) && (r.subcategories ?? []).some((s: any) => s.otherNotes?.length > 0) && (
+      <tr>
+        <td colSpan={8} className="px-6 py-2 bg-yellow-50">
+          <span className="text-xs text-yellow-800 font-medium">「その他」自由入力: </span>
+          <span className="text-xs text-yellow-700">
+            {(r.subcategories ?? []).flatMap((s: any) => s.otherNotes ?? []).join(' / ')}
+          </span>
+        </td>
+      </tr>
+    )}
+  </Fragment>
+))}
+                  
+
             </tbody>
           </table>
         </div>
@@ -464,15 +522,34 @@ function CancelReasonsTab() {
           <table className="w-full text-sm">
             <thead><tr className="border-b border-border bg-muted/40"><TH>理由</TH><TH right>件数</TH><TH right>割合</TH><TH>種別</TH></tr></thead>
             <tbody className="divide-y divide-border">
-              {(data.rows ?? []).map((r: any) => (
-                <tr key={r.id} className="hover:bg-muted/20">
-                  <TD>{r.name}</TD>
-                  <TD right bold>{r.count}</TD>
-                  <TD right>{fmtPct(r.share)}</TD>
-                  <TD>{r.is_auto_cancel && <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-xs text-orange-700">自動専用</span>}</TD>
-                </tr>
-              ))}
-            </tbody>
+  {(data.rows ?? []).map((r: any) => (
+    <Fragment key={r.id}>
+      <tr className="hover:bg-muted/20">
+        <TD>{r.name}</TD>
+        <TD right bold>{r.count}</TD>
+        <TD right>{fmtPct(r.share)}</TD>
+        <TD>
+          {r.is_auto_cancel && (
+            <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-xs text-orange-700">
+              自動専用
+            </span>
+          )}
+        </TD>
+      </tr>
+
+      {(r.otherNotes ?? []).length > 0 && (
+        <tr>
+          <td colSpan={4} className="px-6 py-2 bg-yellow-50">
+            <span className="text-xs text-yellow-800 font-medium">自由入力メモ: </span>
+            <span className="text-xs text-yellow-700">
+              {(r.otherNotes ?? []).join(' / ')}
+            </span>
+          </td>
+        </tr>
+      )}
+    </Fragment>
+  ))}
+</tbody>
           </table>
         </div>
       </div>
@@ -593,19 +670,27 @@ export default function AnalyticsPage() {
       {/* KPIカード（当月） */}
       {mk && (
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">当月KPI（{new Date().getMonth() + 1}月）</p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9">
-            <KPI label="問合せ"    value={fmtNum(mk.inquiry)}   icon={Users}       color="text-blue-600" />
-            <KPI label="下見"      value={fmtNum(mk.preview)}   icon={Calendar}    color="text-purple-600" />
-            <KPI label="確定"      value={fmtNum(mk.confirmed)} icon={TrendingUp}  color="text-green-700" />
-            <KPI label="キャンセル" value={fmtNum(mk.cancelManual + mk.cancelAuto)} icon={XCircle} color="text-red-500" />
-            <KPI label="確定売上"  value={fmtYen(mk.revenue)}   icon={DollarSign}  color="text-green-700" />
-            <KPI label="平均単価"  value={mk.avgPrice > 0 ? fmtYen(mk.avgPrice) : '—'} icon={BarChart2} color="text-blue-600" />
-            <KPI label="→確定率"  value={fmtPct(mk.cvRate)}     icon={TrendingUp}  color="text-orange-600" />
-            <KPI label="年間売上"  value={yk ? fmtYen(yk.revenue) : '—'} icon={DollarSign} color="text-green-700" />
-            <KPI label="自動ｷｬﾝ累計" value={fmtNum(mk.autoCancelTotal ?? 0)} icon={XCircle} color="text-red-800" />
-          </div>
-        </div>
+  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    当月KPI（{new Date().getMonth() + 1}月）
+  </p>
+  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-12">
+    <KPI label="問合せ" value={fmtNum(mk.inquiry)} icon={Users} color="text-blue-600" />
+    <KPI label="下見" value={fmtNum(mk.preview)} icon={Calendar} color="text-purple-600" />
+    <KPI label="→下見率" value={fmtPct(mk.previewRate)} icon={TrendingUp} color="text-purple-600" />
+    <KPI label="確定" value={fmtNum(mk.confirmed)} icon={TrendingUp} color="text-green-700" />
+
+    <KPI label="問合せ→確定率" value={fmtPct(mk.cvRate)} icon={TrendingUp} color="text-orange-600" />
+    <KPI label="下見→確定率" value={fmtPct(mk.confirmRate)} icon={TrendingUp} color="text-orange-500" />
+
+    <KPI label="下見前ｷｬﾝ" value={fmtNum(mk.cancelBeforePreview)} icon={XCircle} color="text-red-400" />
+    <KPI label="下見後ｷｬﾝ" value={fmtNum(mk.cancelAfterPreview)} icon={XCircle} color="text-red-600" />
+    <KPI label="自動ｷｬﾝ累計" value={fmtNum(mk.autoCancelTotal ?? 0)} icon={XCircle} color="text-red-800" />
+
+    <KPI label="確定売上" value={fmtYen(mk.revenue)} icon={DollarSign} color="text-green-700" />
+    <KPI label="平均単価" value={mk.avgPrice > 0 ? fmtYen(mk.avgPrice) : '—'} icon={BarChart2} color="text-blue-600" />
+    <KPI label="年間売上" value={yk ? fmtYen(yk.revenue) : '—'} icon={DollarSign} color="text-green-700" />
+  </div>
+</div>
       )}
 
       {/* ランキング */}

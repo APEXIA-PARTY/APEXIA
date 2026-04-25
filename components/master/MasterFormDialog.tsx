@@ -102,7 +102,12 @@ export function MasterFormDialog({
                 )}
 
                 {field.type === 'number' && (
-                  <input {...register(field.name, { valueAsNumber: true })} type="number" min="0" className={INP} placeholder={field.placeholder} />
+                  <input
+                    {...register(field.name, {
+                      setValueAs: (v) => v === '' || v === null || v === undefined ? 0 : Number(v),
+                    })}
+                    type="number" min="0" className={INP} placeholder={field.placeholder}
+                  />
                 )}
 
                 {field.type === 'textarea' && (
