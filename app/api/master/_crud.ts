@@ -38,10 +38,12 @@ export function createMasterHandlers({
   tableName,
   schema,
   defaultOrder = 'display_order',
+  extraFilters,
 }: {
   tableName: string
   schema: ZodSchema
   defaultOrder?: string
+  extraFilters?: (query: any, params: URLSearchParams) => any
 }) {
 
   async function GET(request: NextRequest) {
@@ -53,7 +55,9 @@ export function createMasterHandlers({
     const showAll = searchParams.get('all') === 'true'
 
     let query = supabase.from(tableName).select('*')
-
+if (extraFilters) {
+  query = extraFilters(query, searchParams)
+}
     if (defaultOrder) {
       query = query.order(defaultOrder, { ascending: true })
     }

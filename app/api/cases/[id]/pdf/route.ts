@@ -196,7 +196,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     status: 200,
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': contentDisposition,
+      'Content-Disposition': contentDispos,
     },
   }
 )
