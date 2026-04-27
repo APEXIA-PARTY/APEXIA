@@ -791,7 +791,8 @@ export default function AnalyticsPage() {
 
       {/* タブ集計 */}
       <div>
-        <div className="mb-4 flex flex-wrap gap-1 rounded-lg border border-border bg-muted/20 p-1">
+        <div className="mb-4 overflow-x-auto">
+        <div className="flex min-w-max gap-1 rounded-lg border border-border bg-muted/20 p-1">
           {TABS.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className={cn('rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
@@ -799,6 +800,7 @@ export default function AnalyticsPage() {
               {t.label}
             </button>
           ))}
+        </div>
         </div>
 
         {tab === 'monthly'          && <MonthlyTab year={year} onYearChange={setYear} years={Array.from({ length: 5 }, (_, i) => String(new Date().getFullYear() - i))} />}

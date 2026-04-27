@@ -16,7 +16,8 @@ import { formatDate, formatCurrency } from '@/lib/utils/format'
 import { CaseStatus } from '@/types/database'
 import { GCalButton } from '@/components/cases/CaseDetail/GCalButton'
 import Link from 'next/link'
-import { Pencil, Lock, FileDown, AlertTriangle } from 'lucide-react'
+import { Pencil, Lock, AlertTriangle } from 'lucide-react'
+import { PdfDownloadButton } from '@/components/cases/PdfDownloadButton'
 
 export default async function CaseDetailPage({ params }: { params: { id: string } }) {
   const supabase = await createClient()
@@ -52,41 +53,33 @@ export default async function CaseDetailPage({ params }: { params: { id: string 
         title={c.company}
         description={`${c.event_name ?? '—'} · 開催: ${formatDate(c.event_date)}`}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Link href="/cases" className="text-sm text-muted-foreground hover:underline">
               ← 一覧
             </Link>
-            {/* PDF出力（全ロール） */}
-            <Link
-              href={`/cases/${params.id}/print`}
-              target="_blank"
-              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-sm hover:bg-muted"
-            >
-              <FileDown className="h-3.5 w-3.5" />
-              PDF
-            </Link>
+            {/* PDF出力（全ロール）: fetch+blob で credentials:include を確実に送信 */}
+            <PdfDownloadButton caseId={params.id} />
 
             {isEditable ? (
               <>
                 {/* Googleカレンダー */}
-  <GCalButton
-  caseId={params.id}
-  company={c.company}
-  eventName={c.event_name}
-  contact={c.contact}
-  inquiryDate={c.inquiry_date}
-  eventDate={c.event_date}
-  startTime={c.start_time}
-  endTime={c.end_time}
-  notes={c.notes}
-  gcalEventId={c.gcal_event_id}
-  appBaseUrl={appBaseUrl}
-  isEditable={isEditable}
-  status={c.status}
-  floor={(c.floor_master as any)?.name ?? null}
-  loadInTime={c.load_in_time}
-  fullExitTime={c.full_exit_time}
-/>
+                <GCalButton
+                  caseId={params.id}
+                  company={c.company}
+                  eventName={c.event_name}
+                  contact={c.contact}
+                  eventDate={c.event_date}
+                  startTime={c.start_time}
+                  endTime={c.end_time}
+                  notes={c.notes}
+                  gcalEventId={c.gcal_event_id}
+                  appBaseUrl={appBaseUrl}
+                  isEditable={isEditable}
+                  status={c.status}
+                  floor={(c.floor_master as any)?.name ?? null}
+                  loadInTime={c.load_in_time}
+                  fullExitTime={c.full_exit_time}
+                />
                 <Link
                   href={`/cases/${params.id}/edit`}
                   className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-muted"
