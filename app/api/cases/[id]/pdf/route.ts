@@ -15,16 +15,31 @@ function d(v: string | null | undefined): string {
   return v && v.trim() ? v.trim() : '—'
 }
 
-// ─── 長いテキストを maxChars 文字で折り返す ─────────────────
+// ─── テキストを折り返す（元の改行を尊重し、長い行のみ maxChars で折り返す）
 function wrapText(text: string, maxChars: number): string[] {
   if (!text || text === '—') return [text || '—']
-  const lines: string[] = []
-  let rem = text
-  while (rem.length > 0) {
-    lines.push(rem.slice(0, maxChars))
-    rem = rem.slice(maxChars)
+  const result: string[] = []
+  // 元テキストの改行で分割
+  const paragraphs = text.split(/\r?\n/)
+  for (const para of paragraphs) {
+    if (para.length === 0) {
+      // 空行はそのまま保持
+      result.push('')
+      continue
+    }
+    // 段落が maxChars 以内なら1行
+    if (para.length <= maxChars) {
+      result.push(para)
+    } else {
+      // maxChars を超える場合だけ折り返す
+      let rem = para
+      while (rem.length > 0) {
+        result.push(rem.slice(0, maxChars))
+        rem = rem.slice(maxChars)
+      }
+    }
   }
-  return lines
+  return result.length > 0 ? result : ['—']
 }
 
 export async function GET(request: NextRequest, { params }: Params) {
@@ -48,7 +63,8 @@ export async function GET(request: NextRequest, { params }: Params) {
       case_options(
         id, name, category, machine_category,
         qty, unit_price, amount, unit, state, sort_order
-      )
+      ),
+      case_checklist(id, item, state, sort_order)
     `)
     .eq('id', params.id)
     .single()
@@ -61,6 +77,8 @@ export async function GET(request: NextRequest, { params }: Params) {
     .sort((a: any, b: any) => a.sort_order - b.sort_order)
   const equipment    = allOptions.filter((o: any) => o.category === 'equipment')
   const machines     = allOptions.filter((o: any) => o.category === 'machine')
+  const checklist    = ((c.case_checklist as any[]) ?? [])
+    .sort((a: any, b: any) => a.sort_order - b.sort_order)
 
   // ─── 3. PDF 生成 ───────────────────────────────────────────
   try {
@@ -87,8 +105,6 @@ export async function GET(request: NextRequest, { params }: Params) {
     const bgGray = rgb(0.94, 0.94, 0.93)
     const bgTh   = rgb(0.88, 0.88, 0.87)   // テーブルヘッダー背景
     const border = rgb(0.73, 0.73, 0.73)
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-    const caseUrl = `${appUrl}/cases/${c.id}`
 
     // ─── ページ管理 ──────────────────────────────────────────
     let pages = [pdfDoc.addPage([PAGE_W, PAGE_H])]
@@ -97,7 +113,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     // 現在のページを返す
     const cur = () => pages[pages.length - 1]
 
-    // 必要に応じてページを追加し y をリセット（フッターも描画）
+    // 必要に応じてページを追加し y をリセット
     const ensureSpace = (needed: number) => {
       if (y - needed < MIN_Y) {
         drawFooter(cur())
@@ -107,7 +123,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       }
     }
 
-    // フッター描画（ページごと）
+    // フッター描画（区切り線のみ・URL非表示）
     const drawFooter = (pg: ReturnType<typeof pdfDoc.addPage>) => {
       const fy = MARGIN - 10
       pg.drawLine({ start: { x: MARGIN, y: fy + 10 }, end: { x: PAGE_W - MARGIN, y: fy + 10 }, thickness: 0.5, color: border })
@@ -129,8 +145,10 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     // ─── ラベル+値 1行描画 ────────────────────────────────────
     const drawRow = (label: string, value: string, isLast = false) => {
-      const lines = wrapText(value, 36)
-      const rowH  = Math.max(18, lines.length * 14)
+      const lines      = wrapText(value, 36)
+      const lineHeight = 16          // 1行あたりの高さ
+      const paddingY   = 10          // 上下余白合計
+      const rowH       = Math.max(24, lines.length * lineHeight + paddingY)
       ensureSpace(rowH)
 
       cur().drawRectangle({ x: MARGIN, y: y - rowH, width: BODY_W, height: rowH, color: bgGray })
@@ -141,9 +159,11 @@ export async function GET(request: NextRequest, { params }: Params) {
       }
       cur().drawLine({ start: { x: MARGIN, y }, end: { x: MARGIN, y: y - rowH }, thickness: 0.5, color: border })
       cur().drawLine({ start: { x: PAGE_W - MARGIN, y }, end: { x: PAGE_W - MARGIN, y: y - rowH }, thickness: 0.5, color: border })
-      cur().drawText(label, { x: MARGIN + 5, y: y - 12, size: 7.5, font: jpFont, color: gray })
+      // ラベルは縦方向中央寄せ（1行固定）
+      cur().drawText(label, { x: MARGIN + 5, y: y - rowH / 2 - 3, size: 7.5, font: jpFont, color: gray })
+      // 値は上余白 5pt から lineHeight ごとに描画
       lines.forEach((line, i) => {
-        cur().drawText(line, { x: MARGIN + COL_W + 5, y: y - 12 - i * 13, size: 8.5, font: jpFont, color: black })
+        cur().drawText(line, { x: MARGIN + COL_W + 5, y: y - 8 - i * lineHeight, size: 8.5, font: jpFont, color: black })
       })
       y -= rowH
     }
@@ -202,31 +222,52 @@ export async function GET(request: NextRequest, { params }: Params) {
       }
 
       rows.forEach((row: any, idx: number) => {
-        ensureSpace(TR_H)
-        const bg = idx % 2 === 0 ? bgGray : white
-        cur().drawRectangle({ x: MARGIN, y: y - TR_H, width: TBL_W, height: TR_H, color: bg })
+        // 内容列を wrapText で折り返し（slice で切らない）
+        const nameLines = wrapText(d(row.name), 24)
+        const nameLH    = 14  // 内容列の行間
+        const namePad   = 8   // 上下余白合計
+        const rowH      = Math.max(20, nameLines.length * nameLH + namePad)
 
-        const nameText  = d(row.name).slice(0, 24)
+        ensureSpace(rowH)
+        const bg = idx % 2 === 0 ? bgGray : white
+        cur().drawRectangle({ x: MARGIN, y: y - rowH, width: TBL_W, height: rowH, color: bg })
+
+        // 内容列: 複数行ブロック全体を縦中央寄せ
+const textBlockH = nameLines.length * nameLH
+const opticalAdjust = 4
+const startY = y - (rowH - textBlockH) / 2 - 3 - opticalAdjust
+
+nameLines.forEach((line, li) => {
+  cur().drawText(line, {
+    x: MARGIN + 4,
+    y: startY - li * nameLH,
+    size: 8,
+    font: jpFont,
+    color: black,
+  })
+})
+
+        // 固定1行列: 行の中央に描画
+        const midY = y - rowH / 2 - 3
         const qtyText   = row.qty ? `${row.qty} ${row.unit ?? ''}`.trim() : '—'
         const stateText = d(row.state)
         const priceText = row.unit_price > 0 ? formatCurrency(row.unit_price) : '—'
         const amtText   = (row.amount ?? row.qty * row.unit_price) > 0
           ? formatCurrency(row.amount ?? row.qty * row.unit_price) : '—'
 
-        cur().drawText(nameText,  { x: MARGIN + 4,                                              y: y - 12, size: 8, font: jpFont, color: black })
-        cur().drawText(qtyText,   { x: MARGIN + C_NAME + 4,                                     y: y - 12, size: 8, font: jpFont, color: black })
-        cur().drawText(stateText, { x: MARGIN + C_NAME + C_QTY + 4,                             y: y - 12, size: 8, font: jpFont, color: black })
-        cur().drawText(priceText, { x: MARGIN + C_NAME + C_QTY + C_STATE + 4,                   y: y - 12, size: 8, font: jpFont, color: black })
-        cur().drawText(amtText,   { x: MARGIN + C_NAME + C_QTY + C_STATE + C_PRICE + 4,         y: y - 12, size: 8, font: jpFont, color: black })
+        cur().drawText(qtyText,   { x: MARGIN + C_NAME + 4,                           y: midY, size: 8, font: jpFont, color: black })
+        cur().drawText(stateText, { x: MARGIN + C_NAME + C_QTY + 4,                   y: midY, size: 8, font: jpFont, color: black })
+        cur().drawText(priceText, { x: MARGIN + C_NAME + C_QTY + C_STATE + 4,         y: midY, size: 8, font: jpFont, color: black })
+        cur().drawText(amtText,   { x: MARGIN + C_NAME + C_QTY + C_STATE + C_PRICE + 4, y: midY, size: 8, font: jpFont, color: black })
 
-        // 行の枠・縦区切り
-        cur().drawLine({ start: { x: MARGIN, y: y - TR_H }, end: { x: MARGIN + TBL_W, y: y - TR_H }, thickness: 0.5, color: border })
-        cur().drawLine({ start: { x: MARGIN, y }, end: { x: MARGIN, y: y - TR_H }, thickness: 0.5, color: border })
-        cur().drawLine({ start: { x: MARGIN + TBL_W, y }, end: { x: MARGIN + TBL_W, y: y - TR_H }, thickness: 0.5, color: border })
+        // 行の枠・縦区切り（可変 rowH に合わせる）
+        cur().drawLine({ start: { x: MARGIN, y: y - rowH }, end: { x: MARGIN + TBL_W, y: y - rowH }, thickness: 0.5, color: border })
+        cur().drawLine({ start: { x: MARGIN, y }, end: { x: MARGIN, y: y - rowH }, thickness: 0.5, color: border })
+        cur().drawLine({ start: { x: MARGIN + TBL_W, y }, end: { x: MARGIN + TBL_W, y: y - rowH }, thickness: 0.5, color: border })
         dividers.forEach(cx => {
-          cur().drawLine({ start: { x: MARGIN + cx, y }, end: { x: MARGIN + cx, y: y - TR_H }, thickness: 0.5, color: border })
+          cur().drawLine({ start: { x: MARGIN + cx, y }, end: { x: MARGIN + cx, y: y - rowH }, thickness: 0.5, color: border })
         })
-        y -= TR_H
+        y -= rowH
       })
     }
 
@@ -272,8 +313,28 @@ export async function GET(request: NextRequest, { params }: Params) {
     drawOptionTable(machines)
     y -= 6
 
-    // ─── ⑥ 備考・注意事項 ────────────────────────────────────
-    sectionTitle('⑥ 備考・注意事項')
+    // ─── ⑥ 確認事項 ─────────────────────────────────────────
+    sectionTitle('⑥ 確認事項')
+    if (checklist.length === 0) {
+      ensureSpace(18)
+      cur().drawRectangle({ x: MARGIN, y: y - 18, width: BODY_W, height: 18, color: bgGray })
+      cur().drawLine({ start: { x: MARGIN, y }, end: { x: PAGE_W - MARGIN, y }, thickness: 0.5, color: border })
+      cur().drawLine({ start: { x: MARGIN, y: y - 18 }, end: { x: PAGE_W - MARGIN, y: y - 18 }, thickness: 0.5, color: border })
+      cur().drawLine({ start: { x: MARGIN, y }, end: { x: MARGIN, y: y - 18 }, thickness: 0.5, color: border })
+      cur().drawLine({ start: { x: PAGE_W - MARGIN, y }, end: { x: PAGE_W - MARGIN, y: y - 18 }, thickness: 0.5, color: border })
+      cur().drawText('確認事項はありません', { x: MARGIN + 5, y: y - 13, size: 8, font: jpFont, color: gray })
+      y -= 18
+    } else {
+      checklist.forEach((item: any, idx: number) => {
+        const stateLabel = item.state === '確定' ? '✓ 確定' : '□ 確認中'
+        const isLast = idx === checklist.length - 1
+        drawRow(stateLabel, d(item.item), isLast)
+      })
+    }
+    y -= 6
+
+    // ─── ⑦ 備考・注意事項 ────────────────────────────────────
+    sectionTitle('⑦ 備考・注意事項')
     if (c.notes) {
       drawRow('備考', c.notes)
     }
@@ -287,7 +348,6 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     // ─── PDF バイト列 ─────────────────────────────────────────
     const pdfBytes = await pdfDoc.save()
-    const pdfBuffer = Buffer.from(pdfBytes)
 
     // ─── ファイル名 ───────────────────────────────────────────
     const safeCompany = (c.company ?? 'no-name')
@@ -300,7 +360,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     console.log('[PDF] generated:', displayName, `${pdfBytes.length} bytes`, `${pages.length} pages`)
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(Buffer.from(pdfBytes), {
       status: 200,
       headers: {
         'Content-Type':        'application/pdf',
