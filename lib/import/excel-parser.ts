@@ -115,6 +115,50 @@ function toStr(val: unknown): string | null {
   return s === '' ? null : s
 }
 
+/**
+ * 集計行かどうかを判定する
+ *
+ * 以下のいずれかに該当する行は集計行とみなす：
+ * - いずれかのセルが "3.8%" のような割合文字列（数字のみ + %）
+ * - いずれかのセルに "件数" / "割合" / "集計" を含む
+ *
+ * 集計行を検出したらループを break（以降のすべての行を読み込まない）。
+ * ※ 電話番号（例: "090-1234-5678"）はパターン不一致のため誤判定しない。
+ */
+function isSummaryRow(row: unknown[]): boolean {
+  const SUMMARY_KEYWORDS = ['件数', '割合', '集計']
+  const PCT_PATTERN = /^\d+(\.\d+)?%$/   // "3.8%", "100.0%" のみマッチ
+
+  for (const cell of row) {
+    if (cell === null || cell === undefined) continue
+    const s = String(cell).trim()
+    if (!s) continue
+    if (PCT_PATTERN.test(s)) return true
+    for (const kw of SUMMARY_KEYWORDS) {
+      if (s.includes(kw)) return true
+    }
+  }
+  return false
+}
+
+/**
+ * 実案件として必要な主要フィールドがすべて空かを判定する
+ *
+ * company / contact / inquiryDate / eventDate / eventCategory / media / floor / notes
+ * が全部 null/空白 の場合に true を返す（空テンプレート行の除外用）。
+ */
+function isEmptyCaseRow(row: unknown[], col: ColumnIndex): boolean {
+  const mainIndices = [
+    col.company, col.contact, col.inquiryDate, col.eventDate,
+    col.eventCategory, col.media, col.floor, col.notes,
+  ]
+  return mainIndices.every(idx => {
+    if (idx < 0) return true
+    const v = row[idx]
+    return v === null || v === undefined || String(v).trim() === ''
+  })
+}
+
 // ─── 列インデックス解決 ──────────────────────────────────────────────────────
 
 interface ColumnIndex {
@@ -251,6 +295,12 @@ export function parseSheet(buffer: Buffer, sheetName: string): ParseSheetResult 
     const excelRowNum = i + 1 // Excel上の行番号（1行目がヘッダーなので2始まり）
 
     // ── スキップ判定 ──────────────────────────────────────────
+    // 集計行（件数/割合/集計キーワード、割合%パターン）→ 以降を読み込まない
+    if (isSummaryRow(raw)) break
+
+    // 主要フィールドが全部空の行はスキップ（空テンプレート行など）
+    if (isEmptyCaseRow(raw, col)) continue
+
     // No列が数値でない行はスキップ（空行・区切り行など）
     if (col.no >= 0) {
       const noVal = raw[col.no]
@@ -258,7 +308,7 @@ export function parseSheet(buffer: Buffer, sheetName: string): ParseSheetResult 
       if (isNaN(Number(String(noVal).replace(/[,\s]/g, '')))) continue
     }
 
-    // 会社名・担当者名が両方空の行はスキップ
+    // 会社名・担当者名が両方空の行はスキップ（念押し）
     const company = col.company >= 0 ? toStr(raw[col.company]) : null
     const contact = col.contact >= 0 ? toStr(raw[col.contact]) : null
     if (!company && !contact) continue
