@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 // Vercel Function タイムアウト（Hobby: 10s / Pro: 60s）
+export const runtime = 'nodejs'
 export const maxDuration = 60
 
 /**
