@@ -178,5 +178,6 @@ export interface ApplyResponse {
   batch_id: string
   approved_count: number
   skipped_count: number
+  skipped_null_company: number
   message: string
 }

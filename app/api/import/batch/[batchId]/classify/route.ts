@@ -138,11 +138,20 @@ export async function POST(_req: Request, { params }: RouteParams) {
     if (row.contact_method_raw && !contact_method_id) unresolved.push(`連絡方法「${row.contact_method_raw}」`)
     if (row.cancel_reason_raw  && !cancel_reason_id)  unresolved.push(`キャンセル理由「${row.cancel_reason_raw}」`)
 
-    // 分類決定
+    // 分類決定（優先順位: company欠損 > 重複候補 > マスター未解決 > 新規追加）
     let classification: StagingClassification
     let review_notes: string
 
-    if (isDuplicate) {
+    const noCompany = !row.company || !row.company.trim()
+
+    if (noCompany) {
+      // company が null/空 → 最優先で要確認（apply でサイレントスキップされるため UI で止める）
+      classification = '要確認'
+      review_notes   = unresolved.length > 0
+        ? `会社名なし（担当者のみ） / マスター未登録: ${unresolved.join('、')}`
+        : '会社名なし（担当者のみ）'
+      reviewCount++
+    } else if (isDuplicate) {
       classification = '重複候補'
       review_notes   = `既存案件（${matched_case_id}）と会社名・開催日が一致`
       dupCount++

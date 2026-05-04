@@ -114,11 +114,13 @@ export async function POST(req: Request, { params }: RouteParams) {
 
   // ── cases へ INSERT（承認行のみ） ─────────────────────────────
   const insertedCaseIds: string[] = []
+  let skippedNullCompany = 0
 
   for (const row of (approvedRows ?? [])) {
-    // company が null の場合は安全のためスキップ
-    if (!row.company) {
-      console.error('[apply] company が null のため INSERT スキップ row_number:', row.row_number)
+    // company が null/空 の場合は安全のためスキップ（classify で要確認になっているはずだが念のため）
+    if (!row.company || !row.company.trim()) {
+      skippedNullCompany++
+      console.warn('[apply] company null/空のためスキップ row_number:', row.row_number)
       continue
     }
 
@@ -264,10 +266,13 @@ export async function POST(req: Request, { params }: RouteParams) {
     .eq('created_by', user.id)
 
   const response: ApplyResponse = {
-    batch_id:       batchId,
-    approved_count: insertedCaseIds.length,
-    skipped_count:  Object.keys(decisions).length - insertedCaseIds.length,
-    message:        `${insertedCaseIds.length}件を cases に反映しました。`,
+    batch_id:            batchId,
+    approved_count:      insertedCaseIds.length,
+    skipped_count:       Object.keys(decisions).length - insertedCaseIds.length,
+    skipped_null_company: skippedNullCompany,
+    message:             skippedNullCompany > 0
+      ? `${insertedCaseIds.length}件を cases に反映しました。（会社名未入力のため ${skippedNullCompany}件スキップ）`
+      : `${insertedCaseIds.length}件を cases に反映しました。`,
   }
 
   return NextResponse.json(response)
