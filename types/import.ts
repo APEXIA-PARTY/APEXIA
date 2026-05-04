@@ -178,6 +178,7 @@ export interface ApplyResponse {
   batch_id: string
   approved_count: number
   skipped_count: number
-  skipped_null_company: number
+  provisional_company_count: number  // 会社名空→担当者名（仮）で仮反映した件数
+  skipped_null_company: number       // 会社名・担当者名両方空でスキップした件数
   message: string
 }

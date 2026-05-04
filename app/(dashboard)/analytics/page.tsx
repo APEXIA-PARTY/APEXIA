@@ -87,6 +87,15 @@ function BarLineChart({ data, maxY }: {
       ctx.beginPath(); ctx.roundRect(x, pad.top + cH - h, bW, h, [3, 3, 0, 0]); ctx.fill()
     })
 
+    // 棒グラフ上に問合せ件数ラベル（薄青バーの上、0件は非表示）
+    ctx.fillStyle = '#6b7280'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center'
+    data.forEach((d, i) => {
+      if (d.bar === 0) return
+      const x = pad.left + bGap * i + bGap / 2
+      const h = d.bar * scale
+      ctx.fillText(String(d.bar), x, pad.top + cH - h - 3)
+    })
+
     // 折れ線グラフ（確定件数）
     ctx.strokeStyle = '#4472C4'; ctx.lineWidth = 2; ctx.beginPath()
     data.forEach((d, i) => {
@@ -101,6 +110,15 @@ function BarLineChart({ data, maxY }: {
       const x = pad.left + bGap * i + bGap / 2
       const y = pad.top + cH - d.line * scale
       ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fillStyle = '#4472C4'; ctx.fill()
+    })
+
+    // 折れ線上に確定件数ラベル（濃青、0件は非表示）
+    ctx.fillStyle = '#4472C4'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'
+    data.forEach((d, i) => {
+      if (d.line === 0) return
+      const x = pad.left + bGap * i + bGap / 2
+      const y = pad.top + cH - d.line * scale
+      ctx.fillText(String(d.line), x, y - 7)
     })
 
     // X軸ラベル
@@ -748,22 +766,22 @@ export default function AnalyticsPage() {
     <div className="space-y-6">
       <PageHeader title="分析・集計" description="問合せ・売上・媒体・分類ごとの集計データ" />
 
-      {/* KPIカード（当月） */}
-      {mk && (
+      {/* KPIカード（年間） */}
+      {yk && (
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">当月KPI（{new Date().getMonth() + 1}月）</p>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">年間KPI（{new Date().getFullYear()}年）</p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-11">
-            <KPI label="問合せ"      value={fmtNum(mk.inquiry)}                             icon={Users}       color="text-blue-600" />
-            <KPI label="下見"        value={fmtNum(mk.preview)}                             icon={Calendar}    color="text-purple-600" />
-            <KPI label="→下見率"    value={fmtPct(mk.previewRate)}                         icon={TrendingUp}  color="text-purple-600" />
-            <KPI label="確定"        value={fmtNum(mk.confirmed)}                           icon={TrendingUp}  color="text-green-700" />
-            <KPI label="下見前ｷｬﾝ"  value={fmtNum(mk.cancelBeforePreview)}                 icon={XCircle}     color="text-red-400" />
-            <KPI label="下見後ｷｬﾝ"  value={fmtNum(mk.cancelAfterPreview)}                  icon={XCircle}     color="text-red-600" />
-            <KPI label="確定売上"    value={fmtYen(mk.revenue)}                             icon={DollarSign}  color="text-green-700" />
-            <KPI label="平均単価"    value={mk.avgPrice > 0 ? fmtYen(mk.avgPrice) : '—'}   icon={BarChart2}   color="text-blue-600" />
-            <KPI label="→確定率"    value={fmtPct(mk.cvRate)}                              icon={TrendingUp}  color="text-orange-600" />
-            <KPI label="年間売上"    value={yk ? fmtYen(yk.revenue) : '—'}                 icon={DollarSign}  color="text-green-700" />
-            <KPI label="自動ｷｬﾝ累計" value={fmtNum(mk.autoCancelTotal ?? 0)}               icon={XCircle}     color="text-red-800" />
+            <KPI label="問合せ"      value={fmtNum(yk.inquiry)}                             icon={Users}       color="text-blue-600" />
+            <KPI label="下見"        value={fmtNum(yk.preview)}                             icon={Calendar}    color="text-purple-600" />
+            <KPI label="→下見率"    value={fmtPct(yk.previewRate)}                         icon={TrendingUp}  color="text-purple-600" />
+            <KPI label="確定"        value={fmtNum(yk.confirmed)}                           icon={TrendingUp}  color="text-green-700" />
+            <KPI label="下見前ｷｬﾝ"  value={fmtNum(yk.cancelBeforePreview)}                 icon={XCircle}     color="text-red-400" />
+            <KPI label="下見後ｷｬﾝ"  value={fmtNum(yk.cancelAfterPreview)}                  icon={XCircle}     color="text-red-600" />
+            <KPI label="確定売上"    value={fmtYen(yk.revenue)}                             icon={DollarSign}  color="text-green-700" />
+            <KPI label="平均単価"    value={yk.avgPrice > 0 ? fmtYen(yk.avgPrice) : '—'}   icon={BarChart2}   color="text-blue-600" />
+            <KPI label="→確定率"    value={fmtPct(yk.cvRate)}                              icon={TrendingUp}  color="text-orange-600" />
+            <KPI label="見積合計"    value={fmtYen(yk.estimateTotal)}                       icon={DollarSign}  color="text-green-700" />
+            <KPI label="自動ｷｬﾝ累計" value={fmtNum(summary?.kpi?.thisMonth?.autoCancelTotal ?? 0)} icon={XCircle} color="text-red-800" />
           </div>
         </div>
       )}

@@ -114,20 +114,36 @@ export async function POST(req: Request, { params }: RouteParams) {
 
   // ── cases へ INSERT（承認行のみ） ─────────────────────────────
   const insertedCaseIds: string[] = []
-  let skippedNullCompany = 0
+  let provisionalCompany = 0  // company空→担当者名（仮）で仮反映した件数
+  let skippedNullCompany = 0  // company・contact両方空でスキップした件数
 
   for (const row of (approvedRows ?? [])) {
-    // company が null/空 の場合は安全のためスキップ（classify で要確認になっているはずだが念のため）
-    if (!row.company || !row.company.trim()) {
-      skippedNullCompany++
-      console.warn('[apply] company null/空のためスキップ row_number:', row.row_number)
-      continue
+    // ── company 決定 ──────────────────────────────────────────
+    // company空 + contact有り → 担当者名（仮）で仮反映（後から案件詳細で修正前提）
+    // company空 + contact空   → 照合不能のためスキップ
+    let insertCompany = row.company?.trim() ?? ''
+    if (!insertCompany) {
+      const contactName = row.contact?.trim() ?? ''
+      if (contactName) {
+        insertCompany = `${contactName}（仮）`
+        provisionalCompany++
+        console.warn('[apply] company空→仮会社名で仮反映 row_number:', row.row_number)
+      } else {
+        skippedNullCompany++
+        console.warn('[apply] company・contact両方空のためスキップ row_number:', row.row_number)
+        continue
+      }
     }
+
+    // ── master ID: 未解決（null）はそのまま通す ───────────────
+    // classify 時点で未登録マスターは null のまま staging に保存済み。
+    // apply では null を cases に INSERT し、後から案件詳細で修正する運用を前提とする。
+    // cases テーブル側の FK カラムはすべて nullable のため DB エラーにはならない。
 
     const { data: newCase, error: insertError } = await supabase
       .from('cases')
       .insert({
-        company:                row.company,
+        company:                insertCompany,
         contact:                row.contact,
         phone:                  row.phone,
         email:                  row.email,
@@ -265,14 +281,21 @@ export async function POST(req: Request, { params }: RouteParams) {
     .eq('id', batchId)
     .eq('created_by', user.id)
 
+  const messageParts: string[] = [`${insertedCaseIds.length}件を cases に反映しました。`]
+  if (provisionalCompany > 0) {
+    messageParts.push(`（会社名未入力 ${provisionalCompany}件は担当者名（仮）で反映）`)
+  }
+  if (skippedNullCompany > 0) {
+    messageParts.push(`（会社名・担当者名両方未入力 ${skippedNullCompany}件はスキップ）`)
+  }
+
   const response: ApplyResponse = {
-    batch_id:            batchId,
-    approved_count:      insertedCaseIds.length,
-    skipped_count:       Object.keys(decisions).length - insertedCaseIds.length,
-    skipped_null_company: skippedNullCompany,
-    message:             skippedNullCompany > 0
-      ? `${insertedCaseIds.length}件を cases に反映しました。（会社名未入力のため ${skippedNullCompany}件スキップ）`
-      : `${insertedCaseIds.length}件を cases に反映しました。`,
+    batch_id:                 batchId,
+    approved_count:           insertedCaseIds.length,
+    skipped_count:            Object.keys(decisions).length - insertedCaseIds.length,
+    provisional_company_count: provisionalCompany,
+    skipped_null_company:     skippedNullCompany,
+    message:                  messageParts.join(''),
   }
 
   return NextResponse.json(response)

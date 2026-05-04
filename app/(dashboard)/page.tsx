@@ -60,7 +60,7 @@ export default async function DashboardPage() {
   const yearRows = filterByYear(rows, thisYear)
   const mk = calcKpi(monthRows)
   const yk = calcKpi(yearRows)
-  const autoTotal = rows.filter((c) => c.status === 'cancelled' && c.auto_cancel).length
+  const autoTotal = yearRows.filter((c) => c.status === 'cancelled' && c.auto_cancel).length
 
   // 月別推移（当年）
   const monthlyTrend = Array.from({ length: 12 }, (_, i) => {
@@ -148,37 +148,40 @@ export default async function DashboardPage() {
         }
       />
 
-      {/* KPIカード（当月） */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-12">
+      {/* KPIカード（年間） */}
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">年間KPI（{thisYear}年）</p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-12">
 
-  <KpiCard label="問合せ" value={mk.inquiry} icon={Users} color="blue" />
-  <KpiCard label="下見" value={mk.preview} icon={Calendar} color="purple" />
-  <KpiCard label="→下見率" value={`${mk.previewRate}%`} icon={TrendingUp} color="purple" />
-  <KpiCard label="確定" value={mk.confirmed} icon={CheckCircle} color="green" />
+  <KpiCard label="問合せ" value={yk.inquiry} icon={Users} color="blue" />
+  <KpiCard label="下見" value={yk.preview} icon={Calendar} color="purple" />
+  <KpiCard label="→下見率" value={`${yk.previewRate}%`} icon={TrendingUp} color="purple" />
+  <KpiCard label="確定" value={yk.confirmed} icon={CheckCircle} color="green" />
 
-  <KpiCard label="問合せ→確定率" value={`${mk.cvRate}%`} icon={TrendingUp} color="orange" />
-  <KpiCard label="下見→確定率" value={`${mk.confirmRate}%`} icon={TrendingUp} color="orange" />
+  <KpiCard label="問合せ→確定率" value={`${yk.cvRate}%`} icon={TrendingUp} color="orange" />
+  <KpiCard label="下見→確定率" value={`${yk.confirmRate}%`} icon={TrendingUp} color="orange" />
 
-  <KpiCard label="下見前ｷｬﾝ" value={mk.cancelBeforePreview} icon={XCircle} color="red" />
-  <KpiCard label="下見後ｷｬﾝ" value={mk.cancelAfterPreview} icon={XCircle} color="red" />
+  <KpiCard label="下見前ｷｬﾝ" value={yk.cancelBeforePreview} icon={XCircle} color="red" />
+  <KpiCard label="下見後ｷｬﾝ" value={yk.cancelAfterPreview} icon={XCircle} color="red" />
   <KpiCard label="自動ｷｬﾝ累計" value={autoTotal} icon={AlertTriangle} color="red" />
 
-  <KpiCard label="確定売上" value={formatCurrencyShort(mk.revenue)} icon={DollarSign} color="green" />
+  <KpiCard label="確定売上" value={formatCurrencyShort(yk.revenue)} icon={DollarSign} color="green" />
   <KpiCard
     label="平均単価"
-    value={mk.avgPrice > 0 ? formatCurrencyShort(mk.avgPrice) : '—'}
+    value={yk.avgPrice > 0 ? formatCurrencyShort(yk.avgPrice) : '—'}
     icon={BarChart2}
     color="blue"
   />
   <KpiCard
-    label="年間売上"
-    value={formatCurrencyShort(yk.revenue)}
+    label="見積合計"
+    value={formatCurrencyShort(yk.estimateTotal)}
     sub={`確定${yk.confirmed}件`}
     icon={TrendingUp}
     color="green"
   />
 
 </div>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* 月別推移グラフ */}
@@ -208,11 +211,6 @@ export default async function DashboardPage() {
 
           {/* 確定 */}
           <div className="relative w-full">
-            {m.confirmed > 0 && (
-              <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-blue-700">
-                {m.confirmed}
-              </span>
-            )}
             <div
               className="min-h-[2px] w-full rounded-t bg-primary/80"
               style={{ height: `${(m.confirmed / maxInquiry) * 120}px` }}
@@ -221,7 +219,15 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        <span className="text-[10px] text-muted-foreground">{m.label}</span>
+        {/* 月ラベル: 問合せラベルはバー上・確定ラベルはここに併記して誤認防止 */}
+        <div className="flex items-center justify-center gap-0.5">
+          <span className="text-[10px] text-muted-foreground">{m.label}</span>
+          {m.confirmed > 0 && (
+            <span className="text-[10px] font-semibold text-blue-700" title={`確定 ${m.confirmed}件`}>
+              {m.confirmed}
+            </span>
+          )}
+        </div>
       </div>
     ))}
   </div>
