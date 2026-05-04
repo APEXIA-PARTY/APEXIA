@@ -331,11 +331,22 @@ export function parseSheet(buffer: Buffer, sheetName: string): ParseSheetResult 
       const previewWait  = col.previewWaitCheck >= 0 ? toBool(raw[col.previewWaitCheck]) : false
 
       let statusRaw = 'inquiry'
-      if (isCancelled)    statusRaw = 'cancelled'
-      else if (isConfirmed)   statusRaw = 'confirmed'
-      else if (isTentative)   statusRaw = 'tentative'
-      else if (hasPreviewed)  statusRaw = 'previewed'
-      else if (previewWait)   statusRaw = 'preview_adj'
+      if (isCancelled) {
+        statusRaw = 'cancelled'
+      } else if (isConfirmed) {
+        // 確定済みでも開催日が過去なら done に変換
+        // YYYY-MM-DD 文字列同士の辞書比較（タイムゾーン影響なし）
+        const eventDateStr = col.eventDate >= 0 ? toDateString(raw[col.eventDate]) : null
+        const now = new Date()
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+        statusRaw = (eventDateStr && eventDateStr < todayStr) ? 'done' : 'confirmed'
+      } else if (isTentative) {
+        statusRaw = 'tentative'
+      } else if (hasPreviewed) {
+        statusRaw = 'previewed'
+      } else if (previewWait) {
+        statusRaw = 'preview_adj'
+      }
 
       // ── 各フィールドを解析 ────────────────────────────────────
       const parsed: ParsedRow = {
