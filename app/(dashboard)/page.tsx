@@ -60,7 +60,7 @@ export default async function DashboardPage() {
   const yearRows = filterByYear(rows, thisYear)
   const mk = calcKpi(monthRows)
   const yk = calcKpi(yearRows)
-  const autoTotal = yearRows.filter((c) => c.status === 'cancelled' && c.auto_cancel).length
+  const autoTotal = monthRows.filter((c) => c.status === 'cancelled' && c.auto_cancel).length
 
   // 月別推移（当年）
   const monthlyTrend = Array.from({ length: 12 }, (_, i) => {
@@ -150,32 +150,32 @@ export default async function DashboardPage() {
 
       {/* KPIカード（年間） */}
       <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">年間KPI（{thisYear}年）</p>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">当月KPI（{format(now, 'M')}月）</p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-12">
 
-  <KpiCard label="問合せ" value={yk.inquiry} icon={Users} color="blue" />
-  <KpiCard label="下見" value={yk.preview} icon={Calendar} color="purple" />
-  <KpiCard label="→下見率" value={`${yk.previewRate}%`} icon={TrendingUp} color="purple" />
-  <KpiCard label="確定" value={yk.confirmed} icon={CheckCircle} color="green" />
+  <KpiCard label="問合せ" value={mk.inquiry} icon={Users} color="blue" />
+  <KpiCard label="下見" value={mk.preview} icon={Calendar} color="purple" />
+  <KpiCard label="→下見率" value={`${mk.previewRate}%`} icon={TrendingUp} color="purple" />
+  <KpiCard label="確定" value={mk.confirmed} icon={CheckCircle} color="green" />
 
-  <KpiCard label="問合せ→確定率" value={`${yk.cvRate}%`} icon={TrendingUp} color="orange" />
-  <KpiCard label="下見→確定率" value={`${yk.confirmRate}%`} icon={TrendingUp} color="orange" />
+  <KpiCard label="問合せ→確定率" value={`${mk.cvRate}%`} icon={TrendingUp} color="orange" />
+  <KpiCard label="下見→確定率" value={`${mk.confirmRate}%`} icon={TrendingUp} color="orange" />
 
-  <KpiCard label="下見前ｷｬﾝ" value={yk.cancelBeforePreview} icon={XCircle} color="red" />
-  <KpiCard label="下見後ｷｬﾝ" value={yk.cancelAfterPreview} icon={XCircle} color="red" />
+  <KpiCard label="下見前ｷｬﾝ" value={mk.cancelBeforePreview} icon={XCircle} color="red" />
+  <KpiCard label="下見後ｷｬﾝ" value={mk.cancelAfterPreview} icon={XCircle} color="red" />
   <KpiCard label="自動ｷｬﾝ累計" value={autoTotal} icon={AlertTriangle} color="red" />
 
-  <KpiCard label="確定売上" value={formatCurrencyShort(yk.revenue)} icon={DollarSign} color="green" />
+  <KpiCard label="確定売上" value={formatCurrencyShort(mk.revenue)} icon={DollarSign} color="green" />
   <KpiCard
     label="平均単価"
-    value={yk.avgPrice > 0 ? formatCurrencyShort(yk.avgPrice) : '—'}
+    value={mk.avgPrice > 0 ? formatCurrencyShort(mk.avgPrice) : '—'}
     icon={BarChart2}
     color="blue"
   />
   <KpiCard
     label="見積合計"
-    value={formatCurrencyShort(yk.estimateTotal)}
-    sub={`確定${yk.confirmed}件`}
+    value={formatCurrencyShort(mk.estimateTotal)}
+    sub={`確定${mk.confirmed}件`}
     icon={TrendingUp}
     color="green"
   />
@@ -191,43 +191,53 @@ export default async function DashboardPage() {
     <span className="ml-2 text-xs text-muted-foreground">※単位：件</span>
   </h2>
 
+  {/*
+    ラベル設計:
+    ① 問合せ件数ラベル → 固定高さの「上段行」に常時配置（バー高さ不問・混在ゼロ）
+    ② 確定件数ラベル  → 月ラベルの下段行に配置（青太字で系列を明示）
+    ③ バー群は中段の flex-col-reverse で通常通りレンダリング
+  */}
   <div className="flex h-44 items-end gap-1.5">
     {monthlyTrend.map((m) => (
-      <div key={m.label} className="flex flex-1 flex-col items-center gap-1">
-        <div className="flex h-full w-full flex-col-reverse gap-1">
-          {/* 問合せ */}
-          <div className="relative w-full">
-            {m.inquiry > 0 && (
-              <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] text-gray-600">
-                {m.inquiry}
-              </span>
-            )}
-            <div
-              className="min-h-[2px] w-full rounded-t bg-blue-200"
-              style={{ height: `${(m.inquiry / maxInquiry) * 120}px` }}
-              title={`問合せ ${m.inquiry}件`}
-            />
-          </div>
+      <div key={m.label} className="flex flex-1 flex-col items-center gap-0">
 
-          {/* 確定 */}
-          <div className="relative w-full">
-            <div
-              className="min-h-[2px] w-full rounded-t bg-primary/80"
-              style={{ height: `${(m.confirmed / maxInquiry) * 120}px` }}
-              title={`確定 ${m.confirmed}件`}
-            />
-          </div>
+        {/* 上段: 問合せ件数ラベル（固定 h-5 行・薄青色） */}
+        <div className="flex h-5 w-full items-center justify-center">
+          {m.inquiry > 0 && (
+            <span className="text-[10px] font-medium text-blue-400" title={`問合せ ${m.inquiry}件`}>
+              {m.inquiry}
+            </span>
+          )}
         </div>
 
-        {/* 月ラベル: 問合せラベルはバー上・確定ラベルはここに併記して誤認防止 */}
-        <div className="flex items-center justify-center gap-0.5">
-          <span className="text-[10px] text-muted-foreground">{m.label}</span>
+        {/* 中段: バー群 */}
+        <div className="flex flex-1 w-full flex-col-reverse gap-0.5">
+          {/* 問合せバー（薄青・上） */}
+          <div
+            className="min-h-[2px] w-full rounded-t bg-blue-200"
+            style={{ height: `${(m.inquiry / maxInquiry) * 100}px` }}
+            title={`問合せ ${m.inquiry}件`}
+          />
+          {/* 確定バー（濃青・下） */}
+          <div
+            className="min-h-[2px] w-full rounded-t bg-primary/80"
+            style={{ height: `${(m.confirmed / maxInquiry) * 100}px` }}
+            title={`確定 ${m.confirmed}件`}
+          />
+        </div>
+
+        {/* 下段: 月ラベル */}
+        <span className="mt-0.5 text-[10px] text-muted-foreground">{m.label}</span>
+
+        {/* 最下段: 確定件数ラベル（濃青太字・0件は非表示） */}
+        <div className="flex h-4 w-full items-center justify-center">
           {m.confirmed > 0 && (
-            <span className="text-[10px] font-semibold text-blue-700" title={`確定 ${m.confirmed}件`}>
+            <span className="text-[10px] font-bold text-primary" title={`確定 ${m.confirmed}件`}>
               {m.confirmed}
             </span>
           )}
         </div>
+
       </div>
     ))}
   </div>

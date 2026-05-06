@@ -112,13 +112,13 @@ function BarLineChart({ data, maxY }: {
       ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fillStyle = '#4472C4'; ctx.fill()
     })
 
-    // 折れ線上に確定件数ラベル（濃青、0件は非表示）
+    // 折れ線上に確定件数ラベル（濃青・ライン点の下に配置し問合せラベルと分離）
     ctx.fillStyle = '#4472C4'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'
     data.forEach((d, i) => {
       if (d.line === 0) return
       const x = pad.left + bGap * i + bGap / 2
       const y = pad.top + cH - d.line * scale
-      ctx.fillText(String(d.line), x, y - 7)
+      ctx.fillText(String(d.line), x, y + 14)  // 点の下14px（問合せバー上ラベルと混在しない）
     })
 
     // X軸ラベル
