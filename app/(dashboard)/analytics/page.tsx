@@ -291,6 +291,46 @@ function MonthlyTab({ year, onYearChange, years }: { year: string; onYearChange:
                 <TD right>{fmtPct(data.total.previewRate)}</TD>
                 <TD right bold>{fmtPct(data.total.cvRate)}</TD>
               </tr>)}
+
+              {/* 平均行: データが存在する月のみで列ごとに独立して算出 */}
+              {(() => {
+                // 表示対象月（データ行と同じフィルタ）
+                const activeMonths: any[] = monthly.filter((m: any) =>
+                  m.inquiry > 0 || m.cancelManual > 0 || m.cancelAuto > 0
+                )
+                if (activeMonths.length === 0) return null
+
+                // 列ごとに「その列が > 0 の月」だけを分母にして平均算出
+                const colAvg = (key: string): number => {
+                  const nonZero = activeMonths.filter((m: any) => m[key] > 0)
+                  if (nonZero.length === 0) return 0
+                  const sum = nonZero.reduce((s: number, m: any) => s + (m[key] as number), 0)
+                  return sum / nonZero.length
+                }
+                // 小数点1桁表示（整数なら .0 なし、小数なら1桁）
+                const fmtAvg = (v: number): string => {
+                  if (v === 0) return '0'
+                  return v % 1 === 0 ? String(v) : v.toFixed(1)
+                }
+
+                return (
+                  <tr className="border-t border-dashed border-border bg-sky-50/30 text-xs italic text-muted-foreground">
+                    <TD bold>平均</TD>
+                    <TD right>{fmtAvg(colAvg('inquiry'))}</TD>
+                    <TD right color="text-purple-500">{fmtAvg(colAvg('preview'))}</TD>
+                    <TD right color="text-green-600">{fmtAvg(colAvg('confirmed'))}</TD>
+                    <TD right color="text-red-400">{fmtAvg(colAvg('cancelManual'))}</TD>
+                    <TD right color="text-red-700">{fmtAvg(colAvg('cancelAuto'))}</TD>
+                    <TD right color="text-red-300">{fmtAvg(colAvg('cancelBeforePreview'))}</TD>
+                    <TD right color="text-red-500">{fmtAvg(colAvg('cancelAfterPreview'))}</TD>
+                    <TD right>—</TD>
+                    <TD right>—</TD>
+                    <TD right>—</TD>
+                    <TD right>—</TD>
+                    <TD right>—</TD>
+                  </tr>
+                )
+              })()}
             </tbody>
           </table>
         </div>
