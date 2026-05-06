@@ -87,13 +87,42 @@ function BarLineChart({ data, maxY }: {
       ctx.beginPath(); ctx.roundRect(x, pad.top + cH - h, bW, h, [3, 3, 0, 0]); ctx.fill()
     })
 
-    // 棒グラフ上に問合せ件数ラベル（薄青バーの上、0件は非表示）
-    ctx.fillStyle = '#6b7280'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center'
+    // 統合ラベル: "問合せ : 確定" を色分け描画（両方0の月は非表示）
+    // canvas は fillText が単色のため、3パーツに分割してそれぞれ色を変える
+    ctx.font = '8px sans-serif'
     data.forEach((d, i) => {
-      if (d.bar === 0) return
-      const x = pad.left + bGap * i + bGap / 2
-      const h = d.bar * scale
-      ctx.fillText(String(d.bar), x, pad.top + cH - h - 3)
+      if (d.bar === 0 && d.line === 0) return
+      const cx = pad.left + bGap * i + bGap / 2
+      // ラベル Y: バーと折れ線のうち高い方の頂点の 5px 上
+      const highestY = pad.top + cH - Math.max(d.bar, d.line) * scale
+      const labelY = highestY - 4
+
+      const s1 = String(d.bar)    // 問合せ（薄青）
+      const s2 = ' : '            // コロン（グレー）
+      const s3 = String(d.line)   // 確定（濃青）
+
+      ctx.font = '8px sans-serif'
+      const w1 = ctx.measureText(s1).width
+      const w2 = ctx.measureText(s2).width
+      ctx.font = 'bold 8px sans-serif'
+      const w3 = ctx.measureText(s3).width
+      const totalW = w1 + w2 + w3
+
+      let sx = cx - totalW / 2
+      ctx.textAlign = 'left'
+
+      ctx.font = '8px sans-serif'
+      ctx.fillStyle = '#93c5fd'  // 薄青（問合せ）
+      ctx.fillText(s1, sx, labelY)
+      sx += w1
+
+      ctx.fillStyle = '#9ca3af'  // グレー（コロン）
+      ctx.fillText(s2, sx, labelY)
+      sx += w2
+
+      ctx.font = 'bold 8px sans-serif'
+      ctx.fillStyle = '#4472C4'  // 濃青（確定）
+      ctx.fillText(s3, sx, labelY)
     })
 
     // 折れ線グラフ（確定件数）
@@ -110,15 +139,6 @@ function BarLineChart({ data, maxY }: {
       const x = pad.left + bGap * i + bGap / 2
       const y = pad.top + cH - d.line * scale
       ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fillStyle = '#4472C4'; ctx.fill()
-    })
-
-    // 折れ線上に確定件数ラベル（濃青・ライン点の下に配置し問合せラベルと分離）
-    ctx.fillStyle = '#4472C4'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'
-    data.forEach((d, i) => {
-      if (d.line === 0) return
-      const x = pad.left + bGap * i + bGap / 2
-      const y = pad.top + cH - d.line * scale
-      ctx.fillText(String(d.line), x, y + 14)  // 点の下14px（問合せバー上ラベルと混在しない）
     })
 
     // X軸ラベル

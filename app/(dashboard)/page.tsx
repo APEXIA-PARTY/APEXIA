@@ -192,25 +192,27 @@ export default async function DashboardPage() {
   </h2>
 
   {/*
-    ラベル設計:
-    ① 問合せ件数ラベル → 固定高さの「上段行」に常時配置（バー高さ不問・混在ゼロ）
-    ② 確定件数ラベル  → 月ラベルの下段行に配置（青太字で系列を明示）
-    ③ バー群は中段の flex-col-reverse で通常通りレンダリング
+    ラベル設計（統合ラベル方式）:
+    バー最上部に「問合せ件数 : 確定件数」を1つだけ表示
+    左（薄青）= 問合せ  ｜  : （グレー）  ｜  右（濃青）= 確定
+    両方0の月は非表示
   */}
   <div className="flex h-44 items-end gap-1.5">
     {monthlyTrend.map((m) => (
       <div key={m.label} className="flex flex-1 flex-col items-center gap-0">
 
-        {/* 上段: 問合せ件数ラベル（固定 h-5 行・薄青色） */}
-        <div className="flex h-5 w-full items-center justify-center">
-          {m.inquiry > 0 && (
-            <span className="text-[10px] font-medium text-blue-400" title={`問合せ ${m.inquiry}件`}>
-              {m.inquiry}
-            </span>
+        {/* 統合ラベル行（固定 h-5）: 問合せ : 確定 */}
+        <div className="flex h-5 w-full items-center justify-center gap-[2px] whitespace-nowrap">
+          {(m.inquiry > 0 || m.confirmed > 0) && (
+            <>
+              <span className="text-[9px] font-medium text-blue-400">{m.inquiry}</span>
+              <span className="text-[9px] text-gray-400">:</span>
+              <span className="text-[9px] font-bold text-primary">{m.confirmed}</span>
+            </>
           )}
         </div>
 
-        {/* 中段: バー群 */}
+        {/* バー群 */}
         <div className="flex flex-1 w-full flex-col-reverse gap-0.5">
           {/* 問合せバー（薄青・上） */}
           <div
@@ -226,17 +228,8 @@ export default async function DashboardPage() {
           />
         </div>
 
-        {/* 下段: 月ラベル */}
+        {/* 月ラベル */}
         <span className="mt-0.5 text-[10px] text-muted-foreground">{m.label}</span>
-
-        {/* 最下段: 確定件数ラベル（濃青太字・0件は非表示） */}
-        <div className="flex h-4 w-full items-center justify-center">
-          {m.confirmed > 0 && (
-            <span className="text-[10px] font-bold text-primary" title={`確定 ${m.confirmed}件`}>
-              {m.confirmed}
-            </span>
-          )}
-        </div>
 
       </div>
     ))}
