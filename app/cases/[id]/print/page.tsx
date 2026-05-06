@@ -344,10 +344,25 @@ export default async function PrintPage({
           </table>
         </div>
 
-        {/* ④ 備品・設備明細 */}
+        {/* ④ 飲食プラン */}
+        {((c.food_plans as string[] | null | undefined) ?? []).length > 0 && (
+          <div className="section">
+            <div className="section-title">④ 飲食プラン</div>
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+              {((c.food_plans as string[]) ?? []).map((plan: string) => (
+                <li key={plan} style={{ padding: '2pt 0', fontSize: '8pt', borderBottom: '0.3pt solid #eee' }}>
+                  ・{plan}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+
+        {/* ⑤ 備品・設備明細 */}
         {equipment.length > 0 && (
           <div className="section">
-            <div className="section-title">④ 備品・設備明細</div>
+            <div className="section-title">⑤ 備品・設備明細</div>
             <table className="opt-table">
               <colgroup>
                 <col className="c-name" />
@@ -393,10 +408,10 @@ export default async function PrintPage({
           </div>
         )}
 
-        {/* ⑤ 機材・オペレーター */}
+        {/* ⑥ 機材・オペレーター */}
         {machines.some(m => m.items.length > 0) && (
           <div className="section">
-            <div className="section-title">⑤ 機材・オペレーター</div>
+            <div className="section-title">⑥ 機材・オペレーター</div>
             {machines.filter(m => m.items.length > 0).map(({ cat, items }) => (
               <div key={cat} style={{ marginBottom: '5pt' }}>
                 <div style={{ fontWeight: 600, fontSize: '7.5pt', marginBottom: '2pt', color: '#555' }}>
@@ -449,10 +464,10 @@ export default async function PrintPage({
           </div>
         )}
 
-        {/* ⑥ 確認事項 */}
+        {/* ⑦ 確認事項 */}
         {checklist.length > 0 && (
           <div className="section">
-            <div className="section-title">⑥ 確認事項</div>
+            <div className="section-title">⑦ 確認事項</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8pt' }}>
               {pending.length > 0 && (
                 <div>
@@ -478,12 +493,12 @@ export default async function PrintPage({
           </div>
         )}
 
-        {/* ⑦ レイアウト図 */}
+        {/* ⑧ レイアウト図 */}
         {layouts.length > 0 && (
           <>
             <div style={{ pageBreakBefore: 'always' }} />
             <div className="section">
-              <div className="section-title">⑦ レイアウト図</div>
+              <div className="section-title">⑧ レイアウト図</div>
               {layouts.map((f) => (
                 <div key={f.id} style={{ marginBottom: '6pt' }}>
                   {f.isPdf ? (
@@ -508,9 +523,9 @@ export default async function PrintPage({
           </>
         )}
 
-        {/* ⑧ 備考・注意事項 */}
+        {/* ⑨ 備考・注意事項 */}
         <div className="section">
-          <div className="section-title">⑧ 備考・注意事項</div>
+          <div className="section-title">⑨ 備考・注意事項</div>
           <table>
             <tbody>
               {c.notes && (

@@ -54,7 +54,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     .select(`
       id, company, contact, phone, email,
       inquiry_date, event_date, event_name, guest_count, notes,
-      estimate_amount, preview_datetime,
+      estimate_amount, preview_datetime, food_plans,
       load_in_time, start_time, end_time, full_exit_time,
       application_form_status, delivery_notice_status,
       invoice_status, payment_method,
@@ -303,18 +303,29 @@ nameLines.forEach((line, li) => {
     drawRowLast('支払い方法',   d(c.payment_method))
     y -= 6
 
-    // ─── ④ 備品・設備明細 ────────────────────────────────────
-    sectionTitle('④ 備品・設備明細')
+    // ─── ④ 飲食プラン ───────────────────────────────────────
+    const foodPlans: string[] = Array.isArray((c as any).food_plans) ? (c as any).food_plans : []
+    if (foodPlans.length > 0) {
+      sectionTitle('④ 飲食プラン')
+      foodPlans.forEach((plan: string, idx: number) => {
+        const isLast = idx === foodPlans.length - 1
+        drawRow('飲食プラン', `・${plan}`, isLast)
+      })
+      y -= 6
+    }
+
+    // ─── ⑤ 備品・設備明細 ────────────────────────────────────
+    sectionTitle('⑤ 備品・設備明細')
     drawOptionTable(equipment)
     y -= 6
 
     // ─── ⑤ 機材・オペレーター ────────────────────────────────
-    sectionTitle('⑤ 機材・オペレーター')
+    sectionTitle('⑥ 機材・オペレーター')
     drawOptionTable(machines)
     y -= 6
 
     // ─── ⑥ 確認事項 ─────────────────────────────────────────
-    sectionTitle('⑥ 確認事項')
+    sectionTitle('⑦ 確認事項')
     if (checklist.length === 0) {
       ensureSpace(18)
       cur().drawRectangle({ x: MARGIN, y: y - 18, width: BODY_W, height: 18, color: bgGray })
@@ -334,7 +345,7 @@ nameLines.forEach((line, li) => {
     y -= 6
 
     // ─── ⑦ 備考・注意事項 ────────────────────────────────────
-    sectionTitle('⑦ 備考・注意事項')
+    sectionTitle('⑧ 備考・注意事項')
     if (c.notes) {
       drawRow('備考', c.notes)
     }

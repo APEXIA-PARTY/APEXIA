@@ -52,7 +52,7 @@ export default async function DashboardPage() {
   const { data: allCases = [] } = await supabase
     .from('cases')
     .select(
-      'id,status,auto_cancel,has_previewed,estimate_amount,inquiry_date,event_date,company,event_name,media_id,event_category_id,event_subcategory_id,contact_method_id,floor_id,updated_at,cancel_reason_id,cancel_note'
+      'id,status,auto_cancel,preview_datetime,estimate_amount,inquiry_date,event_date,company,event_name,media_id,event_category_id,event_subcategory_id,contact_method_id,floor_id,updated_at,cancel_reason_id,cancel_note'
     )
 
   const rows = (allCases as CaseRow[]) ?? []

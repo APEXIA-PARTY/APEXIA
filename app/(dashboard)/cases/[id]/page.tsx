@@ -9,6 +9,7 @@ import { CaseDetailHistory } from '@/components/cases/CaseDetail/History'
 import { CaseDeleteButton } from '@/components/cases/CaseDetail/DeleteButton'
 import { CaseStatusChanger } from '@/components/cases/CaseDetail/StatusChanger'
 import { CaseOptionsSection } from '@/components/cases/CaseDetail/Options'
+import { CaseFoodPlansSection } from '@/components/cases/CaseDetail/FoodPlans'
 import { CaseChecklistSection } from '@/components/cases/CaseDetail/Checklist'
 import { CaseFilesSection } from '@/components/cases/CaseDetail/Files'
 import { CaseHoldLogSection } from '@/components/cases/CaseDetail/HoldLog'
@@ -162,7 +163,14 @@ export default async function CaseDetailPage({ params }: { params: { id: string 
       {/* ③ 確認手続き */}
       <CaseDetailProcedure caseData={c as any} />
 
-      {/* ④ 備品・設備 / ⑤ 機材・オペレーター */}
+      {/* ④ 飲食プラン */}
+      <CaseFoodPlansSection
+        caseId={params.id}
+        initialPlans={(c as any).food_plans ?? []}
+        isEditable={isEditable}
+      />
+
+      {/* ⑤ 備品・設備 / ⑥ 機材・オペレーター */}
       <CaseOptionsSection caseId={params.id} isEditable={isEditable} />
 
       {/* ⑥ 確認事項 */}

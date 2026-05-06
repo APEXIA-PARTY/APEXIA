@@ -305,7 +305,7 @@ export function CaseOptionsSection({ caseId, isEditable = true }: CaseOptionsSec
       {/* ④ 備品・設備 */}
       <section className="overflow-hidden rounded-lg border border-border bg-card">
         <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-3">
-          <h2 className="text-sm font-semibold">④ 備品・設備</h2>
+          <h2 className="text-sm font-semibold">⑤ 備品・設備</h2>
           <span className="text-xs text-muted-foreground">{equipment.length} 件</span>
         </div>
         <div className="px-5 py-4">
@@ -320,7 +320,7 @@ export function CaseOptionsSection({ caseId, isEditable = true }: CaseOptionsSec
       {/* ⑤ 機材・オペレーター */}
       <section className="overflow-hidden rounded-lg border border-border bg-card">
         <div className="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-3">
-          <h2 className="text-sm font-semibold">⑤ 機材・オペレーター</h2>
+          <h2 className="text-sm font-semibold">⑥ 機材・オペレーター</h2>
           <span className="text-xs text-muted-foreground">
             {items.filter((i) => i.category === 'machine').length} 件
           </span>

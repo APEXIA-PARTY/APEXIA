@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   // 対象年の案件を取得
   const { data: cases, error: dbError } = await supabase
     .from('cases')
-    .select('id,status,auto_cancel,estimate_amount,inquiry_date,event_date,company,media_id,contact_method_id,floor_id,event_category_id,event_subcategory_id,cancel_reason_id,cancel_note')
+    .select('id,status,auto_cancel,preview_datetime,estimate_amount,inquiry_date,event_date,company,media_id,contact_method_id,floor_id,event_category_id,event_subcategory_id,cancel_reason_id,cancel_note')
     .gte('inquiry_date', `${year}-01-01`)
     .lte('inquiry_date', `${year}-12-31`)
 

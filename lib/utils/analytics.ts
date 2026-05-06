@@ -46,7 +46,8 @@ export interface CaseRow {
   id: string
   status: CaseStatus
   auto_cancel: boolean
-  has_previewed: boolean
+  /** 下見日時（TIMESTAMPTZ）。null = 下見なし。has_previewed は廃止し preview_datetime で判定 */
+  preview_datetime: string | null
   estimate_amount: number
   inquiry_date: string | null
   event_date: string | null
@@ -80,8 +81,8 @@ export interface KpiResult {
 export function calcKpi(cases: CaseRow[]): KpiResult {
   const inquiry = cases.length
 
-  // 下見件数は現在ステータスではなく has_previewed を使う
-  const preview = cases.filter((c) => c.has_previewed).length
+  // 下見件数は preview_datetime（下見日時）が存在するかで判定する（status 不問）
+  const preview = cases.filter((c) => !!c.preview_datetime).length
 
   const confirmed = cases.filter((c) => REVENUE_STATUSES.includes(c.status)).length
 
@@ -94,11 +95,11 @@ export function calcKpi(cases: CaseRow[]): KpiResult {
   ).length
 
   const cancelBeforePreview = cases.filter(
-    (c) => c.status === CANCEL_STATUS && !c.has_previewed
+    (c) => c.status === CANCEL_STATUS && !c.preview_datetime
   ).length
 
   const cancelAfterPreview = cases.filter(
-    (c) => c.status === CANCEL_STATUS && c.has_previewed
+    (c) => c.status === CANCEL_STATUS && !!c.preview_datetime
   ).length
 
   const estimateTotal = cases
