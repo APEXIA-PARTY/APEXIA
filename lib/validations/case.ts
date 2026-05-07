@@ -66,13 +66,13 @@ export const caseFormSchema = z.object({
   // 基本情報
   company: z.string().min(1, '会社名は必須です').max(200),
   contact: emptyToUndefined(z.string().max(100).optional()),
-  phone: emptyToUndefined(z.string().max(20).optional()),
+  phone: emptyToNull(z.string().max(20).nullable().optional()),
   email: z.preprocess(
     (val) => {
-      if (val === '' || val === null || val === undefined) return undefined
+      if (val === '' || val === null || val === undefined) return null
       return val
     },
-    z.string().email('メールアドレスの形式が正しくありません').optional()
+    z.string().email('メールアドレスの形式が正しくありません').nullable().optional()
   ),
 
   inquiry_date: z.string().min(1, '問合せ日は必須です'),

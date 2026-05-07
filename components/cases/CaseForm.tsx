@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
@@ -168,12 +168,15 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
   const [floors, setFloors] = useState<MasterItem[]>([])
   const [cancelReasons, setCancelReasons] = useState<MasterItem[]>([])
   const [mastersLoading, setMastersLoading] = useState(true)
+  // 中分類の初期値セットは1回だけ行うためのフラグ
+  const initialSubcategorySet = useRef(false)
 
   const {
     register,
     handleSubmit,
     watch,
     control,
+    setValue,
     formState: { errors },
   } = useForm<CaseFormValues>({
     resolver: zodResolver(caseFormSchema),
@@ -242,6 +245,17 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
       setFloors(flr)
       setCancelReasons(reasons)
       setMastersLoading(false)
+      // ── select 初期値の再適用 ──────────────────────────────────────
+      // useForm の defaultValues は mount 時（option 未ロード）に設定されるため
+      // <select> に一致する option がなく「選択してください」になる。
+      // master ロード完了後に setValue で再適用することで正しい初期値を表示する。
+      if (initialData) {
+        if (initialData.floor_id)           setValue('floor_id',           initialData.floor_id)
+        if (initialData.media_id)           setValue('media_id',           initialData.media_id)
+        if (initialData.contact_method_id)  setValue('contact_method_id',  initialData.contact_method_id)
+        if (initialData.event_category_id)  setValue('event_category_id',  initialData.event_category_id)
+        if (initialData.cancel_reason_id)   setValue('cancel_reason_id',   initialData.cancel_reason_id)
+      }
     })
   }, [])
 
@@ -256,6 +270,18 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
       .then((d) => setEventSubcategories(Array.isArray(d) ? d : []))
       .catch(() => setEventSubcategories([]))
   }, [watchCategoryId])
+
+  // 中分類 option ロード後に初期値を1回だけ再適用
+  useEffect(() => {
+    if (
+      !initialSubcategorySet.current &&
+      eventSubcategories.length > 0 &&
+      initialData?.event_subcategory_id
+    ) {
+      setValue('event_subcategory_id', initialData.event_subcategory_id)
+      initialSubcategorySet.current = true
+    }
+  }, [eventSubcategories])
 
   // ─── 送信 ────────────────────────────────────────────────────────
   const onSubmit = async (values: CaseFormValues) => {
