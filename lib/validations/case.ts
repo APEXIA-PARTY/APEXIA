@@ -118,7 +118,13 @@ export const caseFormSchema = z.object({
     .optional()
     .default('未対応'),
   payment_method: emptyToNull(
-    z.enum(['キャッシュレス', '現金', '現金+キャッシュレス']).nullable().optional()
+    z.enum([
+      '当日キャッシュレス', '当日現金', '当日キャッシュレス+現金',
+      '事前キャッシュレス', '事前現金', '事前キャッシュレス+現金',
+      '半額事前+半額当日', '請求書',
+      // 旧値フォールバック（migration 前のデータ互換）
+      'キャッシュレス', '現金', '現金+キャッシュレス',
+    ]).nullable().optional()
   ),
 
   // ステータス

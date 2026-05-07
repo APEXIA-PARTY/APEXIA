@@ -92,7 +92,23 @@ export const AUTO_CANCEL_TARGET_STATUSES: CaseStatus[] = [
 export const FORM_STATUS_OPTIONS = ['未対応', '済み'] as const
 export const DELIVERY_STATUS_OPTIONS = ['未対応', '済み'] as const
 export const INVOICE_STATUS_OPTIONS = ['未対応', '発行依頼', '送付済み', '振り込み済み'] as const
-export const PAYMENT_METHOD_OPTIONS = ['キャッシュレス', '現金', '現金+キャッシュレス'] as const
+export const PAYMENT_METHOD_OPTIONS = [
+  '当日キャッシュレス',
+  '当日現金',
+  '当日キャッシュレス+現金',
+  '事前キャッシュレス',
+  '事前現金',
+  '事前キャッシュレス+現金',
+  '半額事前+半額当日',
+  '請求書',
+] as const
+
+/** 旧選択肢 → 新選択肢 フォールバックマップ（migration 前のデータ表示崩壊防止） */
+export const PAYMENT_METHOD_FALLBACK: Record<string, string> = {
+  'キャッシュレス':      '当日キャッシュレス',
+  '現金':               '当日現金',
+  '現金+キャッシュレス': '当日キャッシュレス+現金',
+}
 
 /**
  * ファイル種別

@@ -54,6 +54,10 @@ export const optionSchema = z.object({
 )
 export type OptionFormValues = z.infer<typeof optionSchema>
 
+// ─── 飲食プラン ───────────────────────────────────────────────
+export const foodPlanSchema = z.object({ ...baseSchema })
+export type FoodPlanFormValues = z.infer<typeof foodPlanSchema>
+
 // ─── display_order 一括更新 ───────────────────────────────────
 export const reorderSchema = z.object({
   // [{ id, display_order }, ...]

@@ -78,7 +78,7 @@ export default async function CaseDetailPage({ params }: { params: { id: string 
                   isEditable={isEditable}
                   status={c.status}
                   floor={(c.floor_master as any)?.name ?? null}
-                  loadInTime={c.load_in_time}
+                  loadInTime={c.load_in_time ?? (c as any).setup_time}
                   fullExitTime={c.full_exit_time}
                 />
                 <Link

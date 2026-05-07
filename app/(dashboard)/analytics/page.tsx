@@ -47,6 +47,7 @@ const TABS = [
   { key: 'cancel-reasons',  label: 'キャンセル理由' },
   { key: 'options',         label: 'オプション' },
   { key: 'lead-time',       label: '先行期間' },
+  { key: 'food-plans',       label: '飲食プラン' },
 ] as const
 type TabKey = typeof TABS[number]['key']
 
@@ -794,6 +795,73 @@ function LeadTimeTab() {
   )
 }
 
+// ─── 飲食プランタブ ────────────────────────────────────────────
+function FoodPlansTab() {
+  const [data, setData] = useState<{ name: string; count: number }[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/analytics/food-plans')
+      .then(r => r.ok ? r.json() : [])
+      .then(d => { setData(Array.isArray(d) ? d : []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  if (loading) return <LoadingBlock />
+
+  const visible = data.filter(d => d.count > 0)
+  const maxCount = visible.length > 0 ? Math.max(...visible.map(d => d.count)) : 1
+
+  if (visible.length === 0) {
+    return (
+      <div className="rounded-lg border border-border bg-card p-8 text-center text-sm text-muted-foreground">
+        飲食プランのデータがありません
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg border border-border bg-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/40">
+                <TH>飲食プラン</TH>
+                <TH right>利用件数</TH>
+                <TH>割合</TH>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {visible.map((row, i) => {
+                const total = visible.reduce((s, r) => s + r.count, 0)
+                const pct = total > 0 ? Math.round((row.count / total) * 100) : 0
+                return (
+                  <tr key={row.name} className="hover:bg-muted/20">
+                    <TD>
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          'flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white',
+                          i === 0 ? 'bg-yellow-500' : i === 1 ? 'bg-gray-400' : i === 2 ? 'bg-orange-400' : 'bg-muted-foreground/40'
+                        )}>{i + 1}</span>
+                        {row.name}
+                      </div>
+                    </TD>
+                    <TD right bold>{fmtNum(row.count)}件</TD>
+                    <TD>
+                      <MiniBar value={row.count} max={maxCount} color="bg-blue-400" />
+                    </TD>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function LoadingBlock() {
   return <div className="h-48 animate-pulse rounded-lg bg-muted/40" />
 }
@@ -917,6 +985,7 @@ export default function AnalyticsPage() {
         {tab === 'cancel-reasons'   && <CancelReasonsTab />}
         {tab === 'options'          && <OptionsTab />}
         {tab === 'lead-time'        && <LeadTimeTab />}
+        {tab === 'food-plans'        && <FoodPlansTab />}
       </div>
     </div>
   )

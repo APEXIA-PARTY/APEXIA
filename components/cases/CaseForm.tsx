@@ -198,13 +198,13 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
       event_subcategory_id: initialData?.event_subcategory_id ?? '',
       event_subcategory_note: initialData?.event_subcategory_note ?? '',
       // 時刻フィールド: DB の TIME 型は "HH:MM:SS" で返るため .slice(0,5) で "HH:MM" に正規化
-      load_in_time: initialData?.load_in_time?.slice(0, 5) ?? '',
-      setup_time: initialData?.setup_time?.slice(0, 5) ?? '',
+      // UI統合: 入り/搬入/準備 = load_in_time ?? setup_time
+      //         片付け/完全撤収 = full_exit_time ?? strike_time（full_exit_timeを正として保存）
+      load_in_time: (initialData?.load_in_time ?? initialData?.setup_time)?.slice(0, 5) ?? '',
       rehearsal_time: initialData?.rehearsal_time?.slice(0, 5) ?? '',
       start_time: initialData?.start_time?.slice(0, 5) ?? '',
       end_time: initialData?.end_time?.slice(0, 5) ?? '',
-      strike_time: initialData?.strike_time?.slice(0, 5) ?? '',
-      full_exit_time: initialData?.full_exit_time?.slice(0, 5) ?? '',
+      full_exit_time: (initialData?.full_exit_time ?? initialData?.strike_time)?.slice(0, 5) ?? '',
       preview_datetime: initialData?.preview_datetime?.slice(0, 16) ?? '',
       application_form_status: initialData?.application_form_status ?? '未対応',
       delivery_notice_status: initialData?.delivery_notice_status ?? '未対応',
@@ -584,13 +584,11 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {([
-            { name: 'load_in_time', label: '入り' },
-            { name: 'setup_time', label: '搬入 / 準備' },
+            { name: 'load_in_time',   label: '入り / 搬入 / 準備' },
             { name: 'rehearsal_time', label: 'リハ' },
-            { name: 'start_time', label: '開始' },
-            { name: 'end_time', label: '終了' },
-            { name: 'strike_time', label: '片付け / 撤収' },
-            { name: 'full_exit_time', label: '完全撤収' },
+            { name: 'start_time',     label: '開始' },
+            { name: 'end_time',       label: '終了' },
+            { name: 'full_exit_time', label: '片付け / 完全撤収' },
           ] as const).map((f) => (
             <div key={f.name}>
               <label className={lbl}>{f.label}</label>
@@ -638,6 +636,13 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
               {PAYMENT_METHOD_OPTIONS.map((v) => (
                 <option key={v} value={v}>{v}</option>
               ))}
+              {/* 旧データ互換（migration前の値が残っている場合のフォールバック表示） */}
+              {(['キャッシュレス', '現金', '現金+キャッシュレス'] as const)
+                .filter(v => !PAYMENT_METHOD_OPTIONS.includes(v as any))
+                .map(v => (
+                  <option key={v} value={v} style={{ color: 'gray' }}>{v}（旧）</option>
+                ))
+              }
             </select>
           </div>
         </div>

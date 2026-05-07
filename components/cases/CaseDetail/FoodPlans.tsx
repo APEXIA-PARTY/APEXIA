@@ -1,19 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { Plus, X } from 'lucide-react'
 import { toast } from 'sonner'
 
-/** 初期選択肢（マスターテーブル不使用・ハードコード） */
-const FOOD_PLAN_OPTIONS = [
-  '5,000ビュッフェ',
-  '6,000ビュッフェ',
-  '8,000ビュッフェ',
-  '7F 飲み放題3,000',
-  '8F飲み放題4,000',
-  '4,500ビュッフェ',
-  '4,200ビュッフェ',
-  '4,000ビュッフェ',
-] as const
+interface FoodPlanMasterItem {
+  id: string
+  name: string
+  display_order: number
+  is_active: boolean
+}
 
 interface CaseFoodPlansSectionProps {
   caseId: string
@@ -24,7 +20,9 @@ interface CaseFoodPlansSectionProps {
 
 /**
  * ④ 飲食プラン セクション
- * 定義済みプランのトグル選択 → PUT /api/cases/[id] で即時保存
+ * - マスタ管理された定義済みプランをトグル選択
+ * - 手入力でカスタムプランを追加可能
+ * - 選択/追加/削除のたびに PUT /api/cases/[id] で即時保存
  */
 export function CaseFoodPlansSection({
   caseId,
@@ -32,38 +30,75 @@ export function CaseFoodPlansSection({
   isEditable = true,
 }: CaseFoodPlansSectionProps) {
   const [selected, setSelected] = useState<string[]>(initialPlans ?? [])
+  const [masterPlans, setMasterPlans] = useState<FoodPlanMasterItem[]>([])
   const [saving, setSaving] = useState(false)
+  const [showCustomInput, setShowCustomInput] = useState(false)
+  const [customValue, setCustomValue] = useState('')
+  const customInputRef = useRef<HTMLInputElement>(null)
 
-  const toggle = async (plan: string) => {
-    if (!isEditable || saving) return
+  // マスタプラン取得
+  useEffect(() => {
+    fetch('/api/master/food-plans')
+      .then(r => r.ok ? r.json() : [])
+      .then(d => setMasterPlans(Array.isArray(d) ? d : []))
+      .catch(() => setMasterPlans([]))
+  }, [])
 
-    const next = selected.includes(plan)
-      ? selected.filter((p) => p !== plan)
-      : [...selected, plan]
+  // 手入力フォーム表示時にフォーカス
+  useEffect(() => {
+    if (showCustomInput) customInputRef.current?.focus()
+  }, [showCustomInput])
 
-    // 楽観的 UI 更新
-    setSelected(next)
+  const save = async (next: string[]) => {
     setSaving(true)
-
+    const prev = selected
+    setSelected(next)
     try {
       const res = await fetch(`/api/cases/${caseId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ food_plans: next }),
       })
-
       if (!res.ok) {
-        // ロールバック
-        setSelected(selected)
+        setSelected(prev)
         toast.error('保存に失敗しました')
       }
     } catch {
-      setSelected(selected)
+      setSelected(prev)
       toast.error('保存に失敗しました')
     } finally {
       setSaving(false)
     }
   }
+
+  const toggleMaster = (name: string) => {
+    if (!isEditable || saving) return
+    const next = selected.includes(name)
+      ? selected.filter(p => p !== name)
+      : [...selected, name]
+    save(next)
+  }
+
+  const removeItem = (name: string) => {
+    if (!isEditable || saving) return
+    save(selected.filter(p => p !== name))
+  }
+
+  const addCustom = () => {
+    const val = customValue.trim()
+    if (!val) { setShowCustomInput(false); return }
+    if (selected.includes(val)) {
+      toast.error('同じプランがすでに選択されています')
+      return
+    }
+    save([...selected, val])
+    setCustomValue('')
+    setShowCustomInput(false)
+  }
+
+  // マスタに含まれないカスタム項目
+  const masterNames = new Set(masterPlans.map(p => p.name))
+  const customItems = selected.filter(n => !masterNames.has(n))
 
   return (
     <section className="overflow-hidden rounded-lg border border-border bg-card">
@@ -76,40 +111,107 @@ export function CaseFoodPlansSection({
 
       <div className="px-5 py-4">
         {isEditable ? (
-          /* 編集モード: トグルチップ */
-          <div className="flex flex-wrap gap-2">
-            {FOOD_PLAN_OPTIONS.map((plan) => {
-              const isActive = selected.includes(plan)
-              return (
+          <div className="space-y-3">
+            {/* マスタ定義済みプランのトグルチップ */}
+            <div className="flex flex-wrap gap-2">
+              {masterPlans.map(plan => {
+                const isActive = selected.includes(plan.name)
+                return (
+                  <button
+                    key={plan.id}
+                    onClick={() => toggleMaster(plan.name)}
+                    disabled={saving}
+                    className={[
+                      'inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
+                      'disabled:cursor-not-allowed disabled:opacity-60',
+                      isActive
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border bg-background text-foreground hover:border-primary/50 hover:bg-muted',
+                    ].join(' ')}
+                  >
+                    {plan.name}
+                    {isActive && (
+                      <X className="h-3 w-3 opacity-70" />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* カスタム項目（マスタ外）の表示 */}
+            {customItems.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {customItems.map(name => (
+                  <span
+                    key={name}
+                    className="inline-flex items-center gap-1 rounded-full border border-primary bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
+                  >
+                    {name}
+                    <button
+                      onClick={() => removeItem(name)}
+                      disabled={saving}
+                      className="ml-0.5 rounded-full hover:opacity-70 disabled:opacity-50"
+                      aria-label={`${name}を削除`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* 手入力エリア */}
+            {showCustomInput ? (
+              <div className="flex items-center gap-2">
+                <input
+                  ref={customInputRef}
+                  type="text"
+                  value={customValue}
+                  onChange={e => setCustomValue(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { e.preventDefault(); addCustom() }
+                    if (e.key === 'Escape') { setShowCustomInput(false); setCustomValue('') }
+                  }}
+                  placeholder="プラン名を入力"
+                  className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
                 <button
-                  key={plan}
-                  onClick={() => toggle(plan)}
-                  disabled={saving}
-                  className={[
-                    'rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
-                    'disabled:cursor-not-allowed disabled:opacity-60',
-                    isActive
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-border bg-background text-foreground hover:border-primary/50 hover:bg-muted',
-                  ].join(' ')}
+                  onClick={addCustom}
+                  disabled={saving || !customValue.trim()}
+                  className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
                 >
-                  {plan}
+                  追加
                 </button>
-              )
-            })}
+                <button
+                  onClick={() => { setShowCustomInput(false); setCustomValue('') }}
+                  className="rounded-md border border-input px-3 py-1.5 text-sm hover:bg-muted"
+                >
+                  キャンセル
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowCustomInput(true)}
+                disabled={saving}
+                className="inline-flex items-center gap-1 rounded-full border border-dashed border-muted-foreground/40 px-3 py-1.5 text-xs text-muted-foreground hover:border-primary/50 hover:text-primary disabled:opacity-50"
+              >
+                <Plus className="h-3 w-3" /> 手入力で追加
+              </button>
+            )}
           </div>
         ) : selected.length === 0 ? (
-          /* 閲覧モード: 未設定 */
           <p className="text-sm text-muted-foreground">未設定</p>
         ) : (
-          /* 閲覧モード: 選択済みリスト */
-          <ul className="space-y-1">
-            {selected.map((plan) => (
-              <li key={plan} className="text-sm">
-                ・{plan}
-              </li>
+          <div className="flex flex-wrap gap-2">
+            {selected.map(plan => (
+              <span
+                key={plan}
+                className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-sm text-primary"
+              >
+                {plan}
+              </span>
             ))}
-          </ul>
+          </div>
         )}
       </div>
     </section>

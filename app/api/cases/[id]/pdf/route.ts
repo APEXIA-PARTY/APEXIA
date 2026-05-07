@@ -55,7 +55,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       id, company, contact, phone, email,
       inquiry_date, event_date, event_name, guest_count, notes,
       estimate_amount, preview_datetime, food_plans,
-      load_in_time, start_time, end_time, full_exit_time,
+      load_in_time, setup_time, rehearsal_time, start_time, end_time, strike_time, full_exit_time,
       application_form_status, delivery_notice_status,
       invoice_status, payment_method,
       media_master(name),
@@ -285,12 +285,17 @@ nameLines.forEach((line, li) => {
     drawRowLast('認知経路',     d((c.media_master as any)?.name))
     y -= 6
 
-    // ─── ② タイムスケジュール ────────────────────────────────
+    // ─── ② タイムスケジュール（UI統合版） ──────────────────────
+    // load_in_time || setup_time → 入り / 搬入 / 準備
+    // strike_time  || full_exit_time → 片付け / 完全撤収
+    const t_arrival   = (c.load_in_time ?? (c as any).setup_time) as string | null
+    const t_cleanup   = ((c as any).strike_time ?? c.full_exit_time) as string | null
     sectionTitle('② タイムスケジュール')
-    drawRow('入り時間',         c.load_in_time   ? formatTime(c.load_in_time)   : '—')
-    drawRow('開始時間',         c.start_time     ? formatTime(c.start_time)     : '—')
-    drawRow('終了時間',         c.end_time       ? formatTime(c.end_time)       : '—')
-    drawRowLast('完全撤収時間', c.full_exit_time ? formatTime(c.full_exit_time) : '—')
+    drawRow('入り / 搬入 / 準備', t_arrival    ? formatTime(t_arrival)      : '—')
+    drawRow('リハ',               (c as any).rehearsal_time ? formatTime((c as any).rehearsal_time) : '—')
+    drawRow('開始',               c.start_time ? formatTime(c.start_time)   : '—')
+    drawRow('終了',               c.end_time   ? formatTime(c.end_time)     : '—')
+    drawRowLast('片付け / 完全撤収', t_cleanup  ? formatTime(t_cleanup)     : '—')
     y -= 6
 
     // ─── ③ 確認手続き ────────────────────────────────────────

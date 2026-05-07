@@ -9,6 +9,7 @@ const MASTERS = [
   { href: '/master/floors',              label: 'フロアマスタ',           desc: '会場フロアの管理（7F / 8F / 両方）' },
   { href: '/master/cancel-reasons',      label: 'キャンセル理由マスタ',   desc: 'キャンセル理由の管理（自動キャンセル用含む）' },
   { href: '/master/options',             label: 'オプションマスタ',       desc: '備品・機材オプションの管理' },
+  { href: '/master/food-plans',          label: '飲食プランマスタ',       desc: '飲食プランの選択肢管理' },
 ]
 
 export default function MasterTopPage() {
