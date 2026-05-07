@@ -37,7 +37,7 @@ function TimeSelect({ value, onChange, disabled }: TimeSelectProps) {
 
   // 外部値 → ローカル state に反映
   useEffect(() => {
-    if (value && /^\d{2}:\d{2}$/.test(value)) {
+    if (value && /^\d{2}:\d{2}(:\d{2})?$/.test(value)) {
       setH(value.slice(0, 2))
       setM(value.slice(3, 5))
     } else {
@@ -197,14 +197,14 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
       event_category_id: initialData?.event_category_id ?? '',
       event_subcategory_id: initialData?.event_subcategory_id ?? '',
       event_subcategory_note: initialData?.event_subcategory_note ?? '',
-      // 時刻フィールド: DB値（HH:MM）をそのまま初期値に。空の場合は空文字
-      load_in_time: initialData?.load_in_time ?? '',
-      setup_time: initialData?.setup_time ?? '',
-      rehearsal_time: initialData?.rehearsal_time ?? '',
-      start_time: initialData?.start_time ?? '',
-      end_time: initialData?.end_time ?? '',
-      strike_time: initialData?.strike_time ?? '',
-      full_exit_time: initialData?.full_exit_time ?? '',
+      // 時刻フィールド: DB の TIME 型は "HH:MM:SS" で返るため .slice(0,5) で "HH:MM" に正規化
+      load_in_time: initialData?.load_in_time?.slice(0, 5) ?? '',
+      setup_time: initialData?.setup_time?.slice(0, 5) ?? '',
+      rehearsal_time: initialData?.rehearsal_time?.slice(0, 5) ?? '',
+      start_time: initialData?.start_time?.slice(0, 5) ?? '',
+      end_time: initialData?.end_time?.slice(0, 5) ?? '',
+      strike_time: initialData?.strike_time?.slice(0, 5) ?? '',
+      full_exit_time: initialData?.full_exit_time?.slice(0, 5) ?? '',
       preview_datetime: initialData?.preview_datetime?.slice(0, 16) ?? '',
       application_form_status: initialData?.application_form_status ?? '未対応',
       delivery_notice_status: initialData?.delivery_notice_status ?? '未対応',
@@ -245,17 +245,11 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
       setFloors(flr)
       setCancelReasons(reasons)
       setMastersLoading(false)
-      // ── select 初期値の再適用 ──────────────────────────────────────
-      // useForm の defaultValues は mount 時（option 未ロード）に設定されるため
-      // <select> に一致する option がなく「選択してください」になる。
-      // master ロード完了後に setValue で再適用することで正しい初期値を表示する。
-      if (initialData) {
-        if (initialData.floor_id)           setValue('floor_id',           initialData.floor_id)
-        if (initialData.media_id)           setValue('media_id',           initialData.media_id)
-        if (initialData.contact_method_id)  setValue('contact_method_id',  initialData.contact_method_id)
-        if (initialData.event_category_id)  setValue('event_category_id',  initialData.event_category_id)
-        if (initialData.cancel_reason_id)   setValue('cancel_reason_id',   initialData.cancel_reason_id)
-      }
+      // ※ setValue はここでは呼ばない。
+      //   setFloors() 等は React の state 更新キューに積まれるだけで、
+      //   この .then() 内ではまだ DOM に option が存在しない。
+      //   setValue → select.value = uuid を実行しても option が無いため
+      //   ブラウザに無視される。useEffect([mastersLoading]) で再適用する。
     })
   }, [])
 
@@ -270,6 +264,21 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
       .then((d) => setEventSubcategories(Array.isArray(d) ? d : []))
       .catch(() => setEventSubcategories([]))
   }, [watchCategoryId])
+
+  // ── select 初期値の再適用（mastersLoading → false 後）─────────────────────
+  // Promise.all.then() 内で setValue を呼ぶと、React が options を DOM に反映する
+  // 前に select.value = uuid を実行してしまいブラウザに無視される。
+  // useEffect は React の render 完了後に実行されるため、
+  // options が DOM にある状態で setValue が成功する。
+  useEffect(() => {
+    if (!mastersLoading && initialData) {
+      if (initialData.floor_id)           setValue('floor_id',           initialData.floor_id)
+      if (initialData.media_id)           setValue('media_id',           initialData.media_id)
+      if (initialData.contact_method_id)  setValue('contact_method_id',  initialData.contact_method_id)
+      if (initialData.event_category_id)  setValue('event_category_id',  initialData.event_category_id)
+      if (initialData.cancel_reason_id)   setValue('cancel_reason_id',   initialData.cancel_reason_id)
+    }
+  }, [mastersLoading])
 
   // 中分類 option ロード後に初期値を1回だけ再適用
   useEffect(() => {
