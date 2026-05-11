@@ -314,21 +314,37 @@ function MonthlyTab({ year, onYearChange, years }: { year: string; onYearChange:
                   return v % 1 === 0 ? String(v) : v.toFixed(1)
                 }
 
+                // 下見率・確定率は「合計下見÷合計問合せ」「合計確定÷合計問合せ」で算出
+                const totalInquiry   = activeMonths.reduce((s: number, m: any) => s + (m.inquiry   as number), 0)
+                const totalPreview   = activeMonths.reduce((s: number, m: any) => s + (m.preview   as number), 0)
+                const totalConfirmed = activeMonths.reduce((s: number, m: any) => s + (m.confirmed as number), 0)
+                const totalRevenue   = activeMonths.reduce((s: number, m: any) => s + (m.revenue   as number), 0)
+
+                const avgPreviewRate = totalInquiry > 0 ? Math.round((totalPreview   / totalInquiry) * 100) : 0
+                const avgCvRate      = totalInquiry > 0 ? Math.round((totalConfirmed / totalInquiry) * 100) : 0
+
+                // 平均単価: 合計確定売上 ÷ 合計確定件数
+                const avgUnitPrice = totalConfirmed > 0 ? Math.round(totalRevenue / totalConfirmed) : 0
+
+                // 見積合計・確定売上はデータのある月の平均
+                const avgEstimate = colAvg('estimateTotal')
+                const avgRevenue  = colAvg('revenue')
+
                 return (
-                  <tr className="border-t border-dashed border-border bg-sky-50/30 text-xs italic text-muted-foreground">
+                  <tr className="border-t border-dashed border-border bg-muted/20">
                     <TD bold>平均</TD>
                     <TD right>{fmtAvg(colAvg('inquiry'))}</TD>
-                    <TD right color="text-purple-500">{fmtAvg(colAvg('preview'))}</TD>
-                    <TD right color="text-green-600">{fmtAvg(colAvg('confirmed'))}</TD>
-                    <TD right color="text-red-400">{fmtAvg(colAvg('cancelManual'))}</TD>
-                    <TD right color="text-red-700">{fmtAvg(colAvg('cancelAuto'))}</TD>
-                    <TD right color="text-red-300">{fmtAvg(colAvg('cancelBeforePreview'))}</TD>
-                    <TD right color="text-red-500">{fmtAvg(colAvg('cancelAfterPreview'))}</TD>
-                    <TD right>—</TD>
-                    <TD right>—</TD>
-                    <TD right>—</TD>
-                    <TD right>—</TD>
-                    <TD right>—</TD>
+                    <TD right color="text-purple-600">{fmtAvg(colAvg('preview'))}</TD>
+                    <TD right color="text-green-700">{fmtAvg(colAvg('confirmed'))}</TD>
+                    <TD right color="text-red-500">{fmtAvg(colAvg('cancelManual'))}</TD>
+                    <TD right color="text-red-800">{fmtAvg(colAvg('cancelAuto'))}</TD>
+                    <TD right color="text-red-400">{fmtAvg(colAvg('cancelBeforePreview'))}</TD>
+                    <TD right color="text-red-600">{fmtAvg(colAvg('cancelAfterPreview'))}</TD>
+                    <TD right color="text-orange-600">{avgEstimate > 0 ? fmtYen(avgEstimate) : '—'}</TD>
+                    <TD right bold color="text-green-700">{avgRevenue > 0 ? fmtYen(avgRevenue) : '—'}</TD>
+                    <TD right>{avgUnitPrice > 0 ? fmtYen(avgUnitPrice) : '—'}</TD>
+                    <TD right>{fmtPct(avgPreviewRate)}</TD>
+                    <TD right bold>{fmtPct(avgCvRate)}</TD>
                   </tr>
                 )
               })()}
