@@ -20,7 +20,7 @@ export default async function EditCasePage({ params }: { params: { id: string } 
   return (
     <div className="space-y-4 max-w-3xl">
       <PageHeader
-        title={`案件編集: ${caseData.company}`}
+        title={`案件編集: ${caseData.company ?? '（会社名未設定）'}`}
         actions={
           <Link href={`/cases/${params.id}`} className="text-sm text-muted-foreground hover:underline">
             ← 詳細に戻る

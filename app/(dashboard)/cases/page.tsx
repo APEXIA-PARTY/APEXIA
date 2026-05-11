@@ -272,7 +272,7 @@ const cases = data ?? []
                 className="block rounded-lg border border-border bg-card p-4 active:bg-muted/50"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="font-semibold text-foreground leading-snug">{c.company}</p>
+                  <p className="font-semibold text-foreground leading-snug">{c.company ?? '—'}</p>
                   <StatusBadge status={c.status as CaseStatus} autoCancel={c.auto_cancel} size="sm" />
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground line-clamp-1">{c.event_name || '—'}</p>
@@ -317,7 +317,7 @@ const cases = data ?? []
                   <tr key={c.id} className="hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3">
                       <Link href={`/cases/${c.id}`} className="font-medium text-foreground hover:text-primary hover:underline">
-                        {c.company}
+                        {c.company ?? '—'}
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{c.event_name || '—'}</td>

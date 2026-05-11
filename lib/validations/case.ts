@@ -64,7 +64,7 @@ const optionalTime = z.preprocess(
  */
 export const caseFormSchema = z.object({
   // 基本情報
-  company: z.string().min(1, '会社名は必須です').max(200),
+  company: emptyToNull(z.string().max(200).nullable().optional()),
   contact: emptyToUndefined(z.string().max(100).optional()),
   phone: emptyToNull(z.string().max(20).nullable().optional()),
   email: z.preprocess(
@@ -101,12 +101,12 @@ export const caseFormSchema = z.object({
   event_subcategory_note: emptyToUndefined(z.string().max(200).optional()),
 
   // タイムスケジュール
+  // ※ setup_time / strike_time は DB レガシーカラム。UI では load_in_time / full_exit_time に統合済み。
+  //    フォームスキーマには含めない（Zod preprocess が undefined→null に変換して上書きされるのを防ぐ）
   load_in_time: optionalTime,
-  setup_time: optionalTime,
   rehearsal_time: optionalTime,
   start_time: optionalTime,
   end_time: optionalTime,
-  strike_time: optionalTime,
   full_exit_time: optionalTime,
 
   // 確認手続き
@@ -139,10 +139,6 @@ export const caseFormSchema = z.object({
 
   // 自動キャンセル
   auto_cancel: z.boolean().optional(),
-
-  // 下見フラグ（APIで自動制御・フォームでは使わない）
-  has_previewed: z.boolean().optional(),
-
 
   // キャンセル関連
   cancel_reason_id: optionalUuid,

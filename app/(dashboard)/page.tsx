@@ -258,7 +258,7 @@ export default async function DashboardPage() {
                 <li key={c.id}>
                   <Link href={`/cases/${c.id}`} className="block rounded-md p-2 hover:bg-muted/50">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="truncate text-sm font-medium">{c.company}</span>
+                      <span className="truncate text-sm font-medium">{c.company ?? '—'}</span>
                       <StatusBadge status={c.status as CaseStatus} size="sm" />
                     </div>
                     <p className="mt-0.5 text-xs text-muted-foreground">
@@ -333,7 +333,7 @@ export default async function DashboardPage() {
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="truncate text-sm font-medium">{c.company}</span>
+                    <span className="truncate text-sm font-medium">{c.company ?? '—'}</span>
                     <StatusBadge status={c.status as CaseStatus} autoCancel={c.auto_cancel} size="sm" />
                   </div>
                   <p className="mt-0.5 text-xs text-muted-foreground">

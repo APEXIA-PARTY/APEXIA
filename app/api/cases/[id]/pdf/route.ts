@@ -64,6 +64,9 @@ export async function GET(request: NextRequest, { params }: Params) {
         id, name, category, machine_category,
         qty, unit_price, amount, unit, state, sort_order
       ),
+      case_food_plans(
+        id, name, qty, unit_price, amount, state, sort_order
+      ),
       case_checklist(id, item, state, sort_order)
     `)
     .eq('id', params.id)
@@ -77,6 +80,8 @@ export async function GET(request: NextRequest, { params }: Params) {
     .sort((a: any, b: any) => a.sort_order - b.sort_order)
   const equipment    = allOptions.filter((o: any) => o.category === 'equipment')
   const machines     = allOptions.filter((o: any) => o.category === 'machine')
+  const foodPlanRows = ((c as any).case_food_plans as any[] ?? [])
+    .sort((a: any, b: any) => a.sort_order - b.sort_order)
   const checklist    = ((c.case_checklist as any[]) ?? [])
     .sort((a: any, b: any) => a.sort_order - b.sort_order)
 
@@ -309,15 +314,9 @@ nameLines.forEach((line, li) => {
     y -= 6
 
     // ─── ④ 飲食プラン ───────────────────────────────────────
-    const foodPlans: string[] = Array.isArray((c as any).food_plans) ? (c as any).food_plans : []
-    if (foodPlans.length > 0) {
-      sectionTitle('④ 飲食プラン')
-      foodPlans.forEach((plan: string, idx: number) => {
-        const isLast = idx === foodPlans.length - 1
-        drawRow('飲食プラン', `・${plan}`, isLast)
-      })
-      y -= 6
-    }
+    sectionTitle('④ 飲食プラン')
+    drawOptionTable(foodPlanRows)
+    y -= 6
 
     // ─── ⑤ 備品・設備明細 ────────────────────────────────────
     sectionTitle('⑤ 備品・設備明細')

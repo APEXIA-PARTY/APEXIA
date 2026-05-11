@@ -181,7 +181,7 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
   } = useForm<CaseFormValues>({
     resolver: zodResolver(caseFormSchema),
     defaultValues: {
-      company: initialData?.company ?? '',
+      company: initialData?.company ?? null,
       contact: initialData?.contact ?? '',
       phone: initialData?.phone ?? '',
       email: initialData?.email ?? '',
@@ -305,7 +305,10 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
       })
       if (!res.ok) {
         const errBody = await res.json().catch(() => ({}))
-        toast.error(errBody.message ?? '保存に失敗しました')
+        // API から返る詳細エラー（DB エラー含む）をそのまま表示する
+        const detail = errBody.hint ? `\n（${errBody.hint}）` : ''
+        toast.error((errBody.message ?? '保存に失敗しました') + detail, { duration: 8000 })
+        console.error('[CaseForm] 保存エラー:', errBody)
         return
       }
       const data = await res.json().catch(() => ({}))
@@ -341,10 +344,10 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
       <section className={sec}>
         <h2 className="font-semibold text-foreground">① 基本情報</h2>
 
-        {/* 会社名（必須） */}
+        {/* 会社名（任意） */}
         <div>
           <label className={lbl}>
-            会社名 / 団体名 <span className="text-destructive">*</span>
+            会社名 / 団体名
           </label>
           <input {...register('company')} className={inp} placeholder="株式会社〇〇" />
           {errors.company && <p className={errCls}>{errors.company.message}</p>}

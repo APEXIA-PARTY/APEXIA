@@ -51,7 +51,7 @@ export default async function CaseDetailPage({ params }: { params: { id: string 
     <div className="space-y-4 max-w-4xl">
       {/* ヘッダー */}
       <PageHeader
-        title={c.company}
+        title={c.company ?? '（会社名未設定）'}
         description={`${c.event_name ?? '—'} · 開催: ${formatDate(c.event_date)}`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
@@ -166,7 +166,6 @@ export default async function CaseDetailPage({ params }: { params: { id: string 
       {/* ④ 飲食プラン */}
       <CaseFoodPlansSection
         caseId={params.id}
-        initialPlans={(c as any).food_plans ?? []}
         isEditable={isEditable}
       />
 

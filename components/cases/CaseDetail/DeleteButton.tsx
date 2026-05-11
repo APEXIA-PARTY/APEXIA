@@ -7,7 +7,7 @@ import { Trash2, Loader2 } from 'lucide-react'
 
 interface Props {
   caseId: string
-  company: string
+  company: string | null | undefined
 }
 
 export function CaseDeleteButton({ caseId, company }: Props) {
@@ -15,7 +15,7 @@ export function CaseDeleteButton({ caseId, company }: Props) {
   const [loading, setLoading] = useState(false)
 
   const handleDelete = async () => {
-    if (!window.confirm(`「${company}」を削除しますか？\nこの操作は取り消せません。`)) return
+    if (!window.confirm(`「${company ?? '（名称なし）'}」を削除しますか？\nこの操作は取り消せません。`)) return
     setLoading(true)
     try {
       const res = await fetch(`/api/cases/${caseId}`, { method: 'DELETE' })

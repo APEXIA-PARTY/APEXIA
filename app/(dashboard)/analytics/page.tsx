@@ -591,7 +591,7 @@ function CancelReasonsTab() {
                   <tbody className="divide-y divide-border">
                     {allNotes.map((n: any, i: number) => (
                       <tr key={i} className="hover:bg-muted/20">
-                        <TD>{n.company}</TD><TD>{n.reason}</TD>
+                        <TD>{n.company ?? '—'}</TD><TD>{n.reason}</TD>
                         <TD>{n.date ?? '—'}</TD><TD>{n.note ?? '—'}</TD>
                       </tr>
                     ))}
@@ -797,7 +797,7 @@ function LeadTimeTab() {
 
 // ─── 飲食プランタブ ────────────────────────────────────────────
 function FoodPlansTab() {
-  const [data, setData] = useState<{ name: string; count: number }[]>([])
+  const [data, setData] = useState<{ name: string; count: number; total_amount: number }[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -811,6 +811,7 @@ function FoodPlansTab() {
 
   const visible = data.filter(d => d.count > 0)
   const maxCount = visible.length > 0 ? Math.max(...visible.map(d => d.count)) : 1
+  const grandTotal = visible.reduce((s, r) => s + (r.total_amount ?? 0), 0)
 
   if (visible.length === 0) {
     return (
@@ -829,13 +830,13 @@ function FoodPlansTab() {
               <tr className="border-b border-border bg-muted/40">
                 <TH>飲食プラン</TH>
                 <TH right>利用件数</TH>
+                <TH right>金額合計（税抜）</TH>
                 <TH>割合</TH>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {visible.map((row, i) => {
                 const total = visible.reduce((s, r) => s + r.count, 0)
-                const pct = total > 0 ? Math.round((row.count / total) * 100) : 0
                 return (
                   <tr key={row.name} className="hover:bg-muted/20">
                     <TD>
@@ -848,6 +849,9 @@ function FoodPlansTab() {
                       </div>
                     </TD>
                     <TD right bold>{fmtNum(row.count)}件</TD>
+                    <TD right color={row.total_amount > 0 ? 'text-green-700' : undefined}>
+                      {row.total_amount > 0 ? `¥${fmtNum(row.total_amount)}` : '—'}
+                    </TD>
                     <TD>
                       <MiniBar value={row.count} max={maxCount} color="bg-blue-400" />
                     </TD>
@@ -855,6 +859,16 @@ function FoodPlansTab() {
                 )
               })}
             </tbody>
+            {grandTotal > 0 && (
+              <tfoot>
+                <tr className="border-t-2 border-border bg-muted/20 font-semibold">
+                  <TD>合計</TD>
+                  <TD right bold>{fmtNum(visible.reduce((s, r) => s + r.count, 0))}件</TD>
+                  <TD right bold>¥{fmtNum(grandTotal)}</TD>
+                  <TD>{''}</TD>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>

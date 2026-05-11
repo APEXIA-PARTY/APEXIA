@@ -10,7 +10,7 @@ import type { CaseStatus } from '@/types/database'
 
 interface Props {
   caseId:        string
-  company:       string
+  company:       string | null | undefined
   eventName:     string | null
   contact:       string | null
   eventDate:     string | null
@@ -91,7 +91,7 @@ export function GCalButton({
       : null
 
     const description = [
-      `会社名: ${company}`,
+      `会社名: ${company ?? '—'}`,
       contact       ? `担当者: ${contact}`                                   : null,
       statusLabel   ? `ステータス: ${statusLabel}`                           : null,
       floor         ? `フロア: ${floor}`                                     : null,
