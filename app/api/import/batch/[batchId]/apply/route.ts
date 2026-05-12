@@ -27,11 +27,11 @@ interface ApplyRequestBody {
   decisions: Record<string, 'approve' | 'skip'>
 }
 
-/** payment_method 文字列を導出 */
+/** payment_method 文字列を導出（007_update_payment_method.sql 適用後の新値） */
 function toPaymentMethod(cash: boolean, prepaid: boolean): string | null {
-  if (cash && prepaid) return '現金+キャッシュレス'
-  if (cash)           return '現金'
-  if (prepaid)        return 'キャッシュレス'
+  if (cash && prepaid) return '当日キャッシュレス+現金'
+  if (cash)           return '当日現金'
+  if (prepaid)        return '当日キャッシュレス'
   return null
 }
 
@@ -196,7 +196,14 @@ export async function POST(req: Request, { params }: RouteParams) {
       }
 
       return NextResponse.json(
-        { message: 'cases への反映中にエラーが発生しました。再度お試しください。' },
+        {
+          message: 'cases への反映中にエラーが発生しました。再度お試しください。',
+          db_error: insertError?.message ?? null,
+          db_code:  insertError?.code    ?? null,
+          db_hint:  (insertError as any)?.hint    ?? null,
+          db_details: (insertError as any)?.details ?? null,
+          row_number: row.row_number ?? null,
+        },
         { status: 500 }
       )
     }
@@ -215,7 +222,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       action:         'insert' as const,
       case_id:        caseId,
       snapshot_before: null,
-      created_by:     batch.created_by,  // バッチ作成者（RLS用）
+      created_by:     user.id,            // apply実行者（RLS: created_by = auth.uid() と一致させる）
       applied_by:     user.id,            // 反映実行者
     }))
 
