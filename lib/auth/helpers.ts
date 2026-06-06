@@ -60,6 +60,22 @@ export async function requireStaff(): Promise<{ error: Response | null }> {
 }
 
 /**
+ * ユーザーとロールを1回の getUser() で同時取得する
+ * 詳細画面・ダッシュボードなど、user と role の両方が必要なページ用
+ * 既存の getCurrentUser() / getCurrentUserRole() は変更しない
+ */
+export async function getCurrentUserAndRole(): Promise<{
+  user: Awaited<ReturnType<typeof getCurrentUser>>
+  role: UserRole | null
+}> {
+  const supabase = await createClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) return { user: null, role: null }
+  const role = (user.user_metadata?.role as UserRole | undefined) ?? 'viewer'
+  return { user, role }
+}
+
+/**
  * 認証済みかどうかのガード
  */
 export async function requireAuth(): Promise<{ error: Response | null }> {

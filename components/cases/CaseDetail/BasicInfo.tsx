@@ -24,6 +24,7 @@ export function CaseDetailBasicInfo({ caseData: c }: Props) {
           <Item label="メール"          value={emptyToDash(c.email)} />
           <Item label="問合せ日"        value={formatDate(c.inquiry_date)} />
           <Item label="開催日"          value={formatDate(c.event_date)} />
+          <Item label="開催日備考"      value={c.event_date_note ?? '—'} />
           <Item label="利用時間"        value={`${formatTime(c.start_time)} 〜 ${formatTime(c.end_time)}`} />
           <Item label="予定参加人数"    value={c.guest_count ? `${c.guest_count} 名` : '—'} />
           <Item label="フロア"          value={c.floor_master?.name ?? '—'} />

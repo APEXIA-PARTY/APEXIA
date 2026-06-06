@@ -46,7 +46,13 @@ export function GCalButton({
 
   // Google Calendar URL を構築
   const buildGCalUrl = (): string => {
-    const title = [company, eventName].filter(Boolean).join(' ')
+    const statusLabel = status
+      ? (STATUS_CONFIG[status as CaseStatus]?.label ?? status)
+      : null
+    const floorTag  = floor  ? `【${floor}】`       : ''
+    const statusTag = statusLabel ? `【${statusLabel}】` : ''
+    const baseTitle = [company, contact, eventName].filter(Boolean).join(' / ')
+    const title = `${floorTag}${statusTag}${baseTitle}`
 
     // ステータス・過去判定で終日 or 時間付きを切り替え
     // 以下ステータス、または eventDate が今日より前の場合は終日予定
@@ -85,10 +91,6 @@ export function GCalButton({
 
     // 案件詳細URL（カレンダーの説明欄に記載）
     const detailUrl = `${appBaseUrl}/cases/${caseId}`
-
-    const statusLabel = status
-      ? (STATUS_CONFIG[status as CaseStatus]?.label ?? status)
-      : null
 
     const description = [
       `会社名: ${company ?? '—'}`,

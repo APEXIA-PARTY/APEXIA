@@ -335,6 +335,12 @@ export default async function PrintPage({
                 <td>{c.delivery_notice_status}</td>
               </tr>
               <tr>
+                <th>申込み金</th>
+                <td>{(c as any).deposit_status ?? '未対応'}</td>
+                <th>残額支払い</th>
+                <td>{(c as any).remaining_payment_status ?? '未対応'}</td>
+              </tr>
+              <tr>
                 <th>請求書</th>
                 <td>{c.invoice_status}</td>
                 <th>支払い方法</th>

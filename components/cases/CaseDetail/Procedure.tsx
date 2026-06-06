@@ -46,6 +46,12 @@ export function CaseDetailProcedure({ caseData: c }: Props) {
         <Row label="搬入出届">
           <StatusPill value={c.delivery_notice_status} okValues={['済み']} />
         </Row>
+        <Row label="申込み金">
+          <StatusPill value={(c as any).deposit_status ?? '未対応'} okValues={['済み']} />
+        </Row>
+        <Row label="残額支払い">
+          <StatusPill value={(c as any).remaining_payment_status ?? '未対応'} okValues={['済み']} />
+        </Row>
         <Row label="請求書">
           <StatusPill value={c.invoice_status} okValues={['振り込み済み', '送付済み']} />
         </Row>

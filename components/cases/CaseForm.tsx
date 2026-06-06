@@ -206,8 +206,11 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
       end_time: initialData?.end_time?.slice(0, 5) ?? '',
       full_exit_time: (initialData?.full_exit_time ?? initialData?.strike_time)?.slice(0, 5) ?? '',
       preview_datetime: initialData?.preview_datetime?.slice(0, 16) ?? '',
+      event_date_note: (initialData as any)?.event_date_note ?? '',
       application_form_status: initialData?.application_form_status ?? '未対応',
       delivery_notice_status: initialData?.delivery_notice_status ?? '未対応',
+      deposit_status: (initialData as any)?.deposit_status ?? '未対応',
+      remaining_payment_status: (initialData as any)?.remaining_payment_status ?? '未対応',
       invoice_status: initialData?.invoice_status ?? '未対応',
       payment_method: initialData?.payment_method ?? null,
       status: (initialData?.status as any) ?? 'inquiry',
@@ -384,6 +387,12 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
           <div>
             <label className={lbl}>開催日</label>
             <input {...register('event_date')} type="date" className={inp} />
+            <input
+              {...register('event_date_note')}
+              type="text"
+              className={`${inp} mt-1`}
+              placeholder="開催日備考（例：7月週末希望・日程未定）"
+            />
           </div>
           <div>
             <label className={lbl}>予定参加人数</label>
@@ -670,6 +679,20 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
               {INVOICE_STATUS_OPTIONS.map((v) => (
                 <option key={v} value={v}>{v}</option>
               ))}
+            </select>
+          </div>
+          <div>
+            <label className={lbl}>申込み金</label>
+            <select {...register('deposit_status')} className={sel}>
+              <option value="未対応">未対応</option>
+              <option value="済み">済み</option>
+            </select>
+          </div>
+          <div>
+            <label className={lbl}>残額支払い</label>
+            <select {...register('remaining_payment_status')} className={sel}>
+              <option value="未対応">未対応</option>
+              <option value="済み">済み</option>
             </select>
           </div>
         </div>

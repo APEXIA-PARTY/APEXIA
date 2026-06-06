@@ -193,7 +193,7 @@ export function CaseChecklistSection({ caseId, isEditable = true }: CaseChecklis
               placeholder="確認事項を入力して Enter"
               value={newItem}
               onChange={e => setNewItem(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && addItem()}
+              onKeyDown={e => e.key === 'Enter' && !e.nativeEvent.isComposing && addItem()}
             />
             <button
               onClick={addItem}

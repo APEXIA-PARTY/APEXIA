@@ -11,6 +11,16 @@ export const maxDuration = 30
 
 type Params = { params: { id: string } }
 
+// ─── フォントキャッシュ（プロセス起動後、初回リクエスト時に1回だけ読み込む）
+let _fontBytesCache: Buffer | null = null
+function getFontBytes(): Buffer {
+  if (!_fontBytesCache) {
+    const fontPath = path.join(process.cwd(), 'public', 'fonts', 'NotoSansJP-Regular.ttf')
+    _fontBytesCache = fs.readFileSync(fontPath)
+  }
+  return _fontBytesCache
+}
+
 function d(v: string | null | undefined): string {
   return v && v.trim() ? v.trim() : '—'
 }
@@ -53,7 +63,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     .from('cases')
     .select(`
       id, company, contact, phone, email,
-      inquiry_date, event_date, event_name, guest_count, notes,
+      inquiry_date, event_date, event_date_note, event_name, guest_count, notes,
       estimate_amount, preview_datetime, food_plans,
       load_in_time, setup_time, rehearsal_time, start_time, end_time, strike_time, full_exit_time,
       application_form_status, delivery_notice_status,
@@ -89,9 +99,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   try {
     const pdfDoc = await PDFDocument.create()
     pdfDoc.registerFontkit(fontkit)
-    const fontPath  = path.join(process.cwd(), 'public', 'fonts', 'NotoSansJP-Regular.ttf')
-    const fontBytes = fs.readFileSync(fontPath)
-    const jpFont    = await pdfDoc.embedFont(fontBytes)
+    const jpFont    = await pdfDoc.embedFont(getFontBytes())
 
     // ─── レイアウト定数 ──────────────────────────────────────
     const PAGE_W    = 595.28
@@ -284,6 +292,7 @@ nameLines.forEach((line, li) => {
     drawRow('メール',           d(c.email))
     drawRow('問合せ日',         formatDate(c.inquiry_date))
     drawRow('開催日',           formatDate(c.event_date))
+    drawRow('開催日備考',       d((c as any).event_date_note))
     drawRow('イベント名',       d(c.event_name))
     drawRow('予定参加人数',     c.guest_count ? `${c.guest_count} 名` : '—')
     drawRow('フロア',           d((c.floor_master as any)?.name))
@@ -350,9 +359,6 @@ nameLines.forEach((line, li) => {
 
     // ─── ⑦ 備考・注意事項 ────────────────────────────────────
     sectionTitle('⑧ 備考・注意事項')
-    if (c.notes) {
-      drawRow('備考', c.notes)
-    }
     drawRowLast(
       '注意事項',
       'お荷物や機材の搬入出は必ず搬入出届をご提出ください。開始・終了時間は厳守をお願いします。ゴミは必ずお持ち帰りください。'

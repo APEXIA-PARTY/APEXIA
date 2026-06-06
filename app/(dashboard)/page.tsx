@@ -17,7 +17,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { KpiCard } from '@/components/dashboard/KpiCard'
 import { StatusBadge } from '@/components/cases/StatusBadge'
 import { AutoCancelButton } from '@/components/dashboard/AutoCancelButton'
-import { getCurrentUserRole } from '@/lib/auth/helpers'
+import { getCurrentUserAndRole } from '@/lib/auth/helpers'
 import {
   formatDate,
   formatCurrency,
@@ -34,14 +34,11 @@ import {
 import { CaseStatus } from '@/types/database'
 
 export default async function DashboardPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
+  // getUser() を1回だけ呼んで user と role を同時取得
+  const { user, role } = await getCurrentUserAndRole()
   if (!user) redirect('/login')
 
-  const role = await getCurrentUserRole()
+  const supabase = await createClient()
   const isAdmin = role === 'admin'
   const now = new Date()
   const thisMonth = format(now, 'yyyy-MM')

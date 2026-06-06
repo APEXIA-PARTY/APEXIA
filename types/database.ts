@@ -29,6 +29,8 @@ export type MachineCategory = '音響' | '照明' | '映像'
 
 export type ApplicationFormStatus = '未対応' | '済み'
 export type DeliveryNoticeStatus = '未対応' | '済み'
+export type DepositStatus = '未対応' | '済み'
+export type RemainingPaymentStatus = '未対応' | '済み'
 export type InvoiceStatus = '未対応' | '発行依頼' | '送付済み' | '振り込み済み'
 export type PaymentMethod = 'キャッシュレス' | '現金' | '現金+キャッシュレス'
 
@@ -156,8 +158,13 @@ export interface Case {
   preview_datetime: string | null
   application_form_status: ApplicationFormStatus
   delivery_notice_status: DeliveryNoticeStatus
+  deposit_status: DepositStatus
+  remaining_payment_status: RemainingPaymentStatus
   invoice_status: InvoiceStatus
   payment_method: PaymentMethod | null
+
+  // 開催日備考（スタッフ内部メモ、PDF非表示）
+  event_date_note: string | null
 
   // ステータス・キャンセル
   status: CaseStatus

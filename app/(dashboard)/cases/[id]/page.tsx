@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentUserRole } from '@/lib/auth/helpers'
+import { getCurrentUserAndRole } from '@/lib/auth/helpers'
 import { notFound, redirect } from 'next/navigation'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { CaseDetailBasicInfo } from '@/components/cases/CaseDetail/BasicInfo'
@@ -21,12 +21,12 @@ import { Pencil, Lock, AlertTriangle } from 'lucide-react'
 import { PdfDownloadButton } from '@/components/cases/PdfDownloadButton'
 
 export default async function CaseDetailPage({ params }: { params: { id: string } }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // getUser() を1回だけ呼んで user と role を同時取得
+  const { user, role } = await getCurrentUserAndRole()
   if (!user) redirect('/login')
 
+  const supabase = await createClient()
   // 権限取得: admin/staff は編集可、viewer は閲覧のみ
-  const role = await getCurrentUserRole()
   const isEditable = role === 'admin' || role === 'staff'
   const appBaseUrl  = process.env.NEXT_PUBLIC_APP_URL ?? ''
 

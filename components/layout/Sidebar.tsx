@@ -4,17 +4,18 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, FileText, BarChart2, Settings,
-  ChevronRight, LogOut, Building2,
+  ChevronRight, LogOut, Building2, ShieldAlert,
 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
 const NAV_ITEMS = [
-  { href: '/',          label: 'ダッシュボード', icon: LayoutDashboard },
-  { href: '/cases',     label: '案件一覧',       icon: FileText },
-  { href: '/analytics', label: '分析・集計',     icon: BarChart2 },
-  { href: '/master',    label: 'マスタ管理',     icon: Settings },
+  { href: '/',             label: 'ダッシュボード',       icon: LayoutDashboard },
+  { href: '/cases',        label: '案件一覧',             icon: FileText },
+  { href: '/analytics',    label: '分析・集計',           icon: BarChart2 },
+  // { href: '/data-quality', label: 'データ品質チェック', icon: ShieldAlert },  // 将来利用予定のため非表示
+  { href: '/master',       label: 'マスタ管理',           icon: Settings },
 ]
 
 export function Sidebar() {
