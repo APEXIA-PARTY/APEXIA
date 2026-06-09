@@ -71,6 +71,14 @@ export function CaseFoodPlansSection({ caseId, isEditable = true }: CaseFoodPlan
   const [masterPlans, setMasterPlans] = useState<FoodPlanMasterItem[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
+  // スマホ用：名称フォーカス時にtextareaへ切り替えるための状態
+  const [nameEditingId, setNameEditingId] = useState<string | null>(null)
+
+  // textareaの高さをコンテンツに合わせて自動調整
+  const autoResize = (el: HTMLTextAreaElement) => {
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }
 
   const fetchItems = async () => {
     const res = await fetch(`/api/cases/${caseId}/food-plans`)
@@ -172,20 +180,42 @@ export function CaseFoodPlansSection({ caseId, isEditable = true }: CaseFoodPlan
             item.state === '不要' && 'opacity-50'
           )}
         >
-          {/* 上段：名称 + 状態 + 削除 */}
+          {/* 上段：名称 + 状態 + 削除
+               nameEditingId === item.id の間はtextareaが全幅、状態/削除は非表示 */}
           <div className="flex items-center gap-2">
+            {/* 名称：編集中はtextarea、通常はdiv（タップでtextareaへ切り替え） */}
             {isEditable ? (
-              <input
-                className={cn(INP, 'flex-1 min-w-0')}
-                defaultValue={item.name}
-                onBlur={e => updateItem(item.id, 'name', e.target.value)}
-              />
+              nameEditingId === item.id ? (
+                <textarea
+                  ref={(el) => { if (el) autoResize(el) }}
+                  className={cn(INP, 'flex-1 min-w-0 resize-none overflow-hidden leading-snug')}
+                  defaultValue={item.name}
+                  rows={2}
+                  autoFocus
+                  onInput={(e) => autoResize(e.currentTarget)}
+                  onBlur={(e) => {
+                    updateItem(item.id, 'name', e.currentTarget.value)
+                    setNameEditingId(null)
+                  }}
+                />
+              ) : (
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className={cn(INP, 'flex-1 min-w-0 cursor-text truncate')}
+                  onClick={() => setNameEditingId(item.id)}
+                  onKeyDown={(e) => e.key === 'Enter' && setNameEditingId(item.id)}
+                >
+                  {item.name || <span className="text-muted-foreground">—</span>}
+                </div>
+              )
             ) : (
               <span className="flex-1 min-w-0 text-sm font-medium truncate">{item.name}</span>
             )}
+            {/* 状態：名称編集中は非表示 */}
             {isEditable ? (
               <select
-                className={cn(SEL, 'text-xs shrink-0 w-[5.5rem]', STATE_STYLE[item.state])}
+                className={cn(SEL, 'text-xs shrink-0 w-[5.5rem]', nameEditingId === item.id && 'hidden', STATE_STYLE[item.state])}
                 value={item.state}
                 onChange={e => updateItem(item.id, 'state', e.target.value)}
               >
@@ -194,15 +224,16 @@ export function CaseFoodPlansSection({ caseId, isEditable = true }: CaseFoodPlan
                 ))}
               </select>
             ) : (
-              <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-xs font-medium', STATE_STYLE[item.state])}>
+              <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-xs font-medium', nameEditingId === item.id && 'hidden', STATE_STYLE[item.state])}>
                 {item.state}
               </span>
             )}
+            {/* 削除：名称編集中は非表示 */}
             {isEditable && (
               <button
                 onClick={() => deleteItem(item.id)}
                 disabled={saving === item.id}
-                className="shrink-0 rounded p-0.5 text-muted-foreground/50 hover:text-destructive disabled:opacity-50"
+                className={cn('shrink-0 rounded p-0.5 text-muted-foreground/50 hover:text-destructive disabled:opacity-50', nameEditingId === item.id && 'hidden')}
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
