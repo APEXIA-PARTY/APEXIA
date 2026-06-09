@@ -19,8 +19,9 @@ const StatusPill = ({ value, okValues }: { value: string; okValues: string[] }) 
 }
 
 const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div className="flex items-center justify-between gap-4 py-2.5 border-b border-border last:border-0">
-    <span className="text-sm text-muted-foreground shrink-0 w-40">{label}</span>
+  <div className="flex items-center justify-between gap-2 py-2.5 border-b border-border last:border-0">
+    {/* スマホ: w-24、PC(sm以上): w-40 */}
+    <span className="text-sm text-muted-foreground shrink-0 w-24 sm:w-40">{label}</span>
     <div className="text-sm font-medium text-right">{children}</div>
   </div>
 )

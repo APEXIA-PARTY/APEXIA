@@ -160,97 +160,173 @@ export function CaseOptionsSection({ caseId, isEditable = true }: CaseOptionsSec
     const subtotalInclTax = Math.round((item.qty ?? 1) * (item.unit_price ?? 0) * TAX_RATE)
 
     return (
-      <div
-        className={cn(
-          'grid items-center gap-2 border-b border-border py-2 text-sm last:border-0',
-          colClass,
-          item.state === '不要' && 'opacity-50'
-        )}
-      >
-        {/* 名称 */}
-        {isEditable ? (
-          <input
-            className={INP}
-            defaultValue={item.name}
-            onBlur={(e) => updateItem(item.id, 'name', e.target.value)}
-          />
-        ) : (
-          <span className="truncate text-sm">{item.name}</span>
-        )}
-
-        {/* 数量 */}
-        {isEditable ? (
-          <input
-            className={INP}
-            type="number"
-            min="1"
-            defaultValue={item.qty}
-            onBlur={(e) => updateItem(item.id, 'qty', Number(e.target.value))}
-          />
-        ) : (
-          <span className="text-center text-sm">{item.qty}</span>
-        )}
-
-        {/* 単価（税抜入力） */}
-        {isEditable ? (
-          <input
-            className={INP}
-            type="number"
-            min="0"
-            defaultValue={item.unit_price}
-            onBlur={(e) => updateItem(item.id, 'unit_price', Number(e.target.value))}
-          />
-        ) : (
-          <span className="text-sm tabular-nums">¥{item.unit_price.toLocaleString()}</span>
-        )}
-
-        {/* 小計（税込表示） */}
-        <span className="text-right text-xs tabular-nums text-muted-foreground">
-          ¥{subtotalInclTax.toLocaleString()}
-        </span>
-
-        {/* 状態 */}
-        {isEditable ? (
-          <select
-            className={cn(SEL, 'text-xs', STATE_STYLE[item.state])}
-            value={item.state}
-            onChange={(e) => updateItem(item.id, 'state', e.target.value)}
-          >
-            {OPTION_STATES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <span
-            className={cn(
-              'rounded-full px-2 py-0.5 text-center text-xs font-medium',
-              STATE_STYLE[item.state]
+      <>
+        {/* ── スマホ用コンパクトカード (sm未満) ── */}
+        <div
+          className={cn(
+            'sm:hidden border-b border-border py-2.5 last:border-0',
+            item.state === '不要' && 'opacity-50'
+          )}
+        >
+          {/* 上段：名称 + 状態 */}
+          <div className="flex items-center gap-2">
+            {/* 名称 */}
+            {isEditable ? (
+              <input
+                className={cn(INP, 'flex-1 min-w-0')}
+                defaultValue={item.name}
+                onBlur={(e) => updateItem(item.id, 'name', e.target.value)}
+              />
+            ) : (
+              <span className="flex-1 min-w-0 text-sm font-medium truncate">{item.name}</span>
             )}
-          >
-            {item.state}
-          </span>
-        )}
+            {/* 状態 */}
+            {isEditable ? (
+              <select
+                className={cn(SEL, 'text-xs shrink-0 w-[5.5rem]', STATE_STYLE[item.state])}
+                value={item.state}
+                onChange={(e) => updateItem(item.id, 'state', e.target.value)}
+              >
+                {OPTION_STATES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            ) : (
+              <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-xs font-medium', STATE_STYLE[item.state])}>
+                {item.state}
+              </span>
+            )}
+            {/* 削除 */}
+            {isEditable && (
+              <button
+                onClick={() => deleteItem(item.id)}
+                disabled={saving === item.id}
+                className="shrink-0 rounded p-0.5 text-muted-foreground/50 hover:text-destructive disabled:opacity-50"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          {/* 下段：数量 × 単価 = 小計 */}
+          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+            {isEditable ? (
+              <input
+                className={cn(INP, 'w-14 text-center')}
+                type="number"
+                min="1"
+                defaultValue={item.qty}
+                onBlur={(e) => updateItem(item.id, 'qty', Number(e.target.value))}
+              />
+            ) : (
+              <span className="tabular-nums">{item.qty}{item.unit}</span>
+            )}
+            <span>×</span>
+            {isEditable ? (
+              <input
+                className={cn(INP, 'w-24 text-right')}
+                type="number"
+                min="0"
+                defaultValue={item.unit_price}
+                onBlur={(e) => updateItem(item.id, 'unit_price', Number(e.target.value))}
+              />
+            ) : (
+              <span className="tabular-nums">¥{item.unit_price.toLocaleString()}</span>
+            )}
+            <span>=</span>
+            <span className="tabular-nums font-medium text-foreground">
+              ¥{subtotalInclTax.toLocaleString()}
+              <span className="text-muted-foreground font-normal">（税込）</span>
+            </span>
+          </div>
+        </div>
 
-        {/* 削除 */}
-        {isEditable && (
-          <button
-            onClick={() => deleteItem(item.id)}
-            disabled={saving === item.id}
-            className="rounded p-0.5 text-muted-foreground/50 hover:text-destructive disabled:opacity-50"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-        )}
-      </div>
+        {/* ── PC用グリッド行 (sm以上) ── */}
+        <div
+          className={cn(
+            'hidden sm:grid items-center gap-2 border-b border-border py-2 text-sm last:border-0',
+            colClass,
+            item.state === '不要' && 'opacity-50'
+          )}
+        >
+          {/* 名称 */}
+          {isEditable ? (
+            <input
+              className={INP}
+              defaultValue={item.name}
+              onBlur={(e) => updateItem(item.id, 'name', e.target.value)}
+            />
+          ) : (
+            <span className="truncate text-sm">{item.name}</span>
+          )}
+
+          {/* 数量 */}
+          {isEditable ? (
+            <input
+              className={INP}
+              type="number"
+              min="1"
+              defaultValue={item.qty}
+              onBlur={(e) => updateItem(item.id, 'qty', Number(e.target.value))}
+            />
+          ) : (
+            <span className="text-center text-sm">{item.qty}</span>
+          )}
+
+          {/* 単価（税抜入力） */}
+          {isEditable ? (
+            <input
+              className={INP}
+              type="number"
+              min="0"
+              defaultValue={item.unit_price}
+              onBlur={(e) => updateItem(item.id, 'unit_price', Number(e.target.value))}
+            />
+          ) : (
+            <span className="text-sm tabular-nums">¥{item.unit_price.toLocaleString()}</span>
+          )}
+
+          {/* 小計（税込表示） */}
+          <span className="text-right text-xs tabular-nums text-muted-foreground">
+            ¥{subtotalInclTax.toLocaleString()}
+          </span>
+
+          {/* 状態 */}
+          {isEditable ? (
+            <select
+              className={cn(SEL, 'text-xs', STATE_STYLE[item.state])}
+              value={item.state}
+              onChange={(e) => updateItem(item.id, 'state', e.target.value)}
+            >
+              {OPTION_STATES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          ) : (
+            <span className={cn('rounded-full px-2 py-0.5 text-center text-xs font-medium', STATE_STYLE[item.state])}>
+              {item.state}
+            </span>
+          )}
+
+          {/* 削除 */}
+          {isEditable && (
+            <button
+              onClick={() => deleteItem(item.id)}
+              disabled={saving === item.id}
+              className="rounded p-0.5 text-muted-foreground/50 hover:text-destructive disabled:opacity-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      </>
     )
   }
 
+  // PC用テーブルヘッダー（スマホ=カード表示のため sm未満は非表示）
   const TableHeader = () => (
     <div
       className={cn(
-        'grid gap-2 border-b border-border pb-1.5 text-xs font-medium text-muted-foreground',
+        'hidden sm:grid gap-2 border-b border-border pb-1.5 text-xs font-medium text-muted-foreground',
         colClass
       )}
     >
