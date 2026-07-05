@@ -79,6 +79,11 @@ export function CaseChecklistSection({ caseId, isEditable = true }: CaseChecklis
     else toast.error('削除に失敗しました')
   }
 
+  const autoResize = (el: HTMLTextAreaElement) => {
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }
+
   const confirmed = items.filter(i => i.state === '確定').length
   const total = items.length
 
@@ -121,11 +126,24 @@ export function CaseChecklistSection({ caseId, isEditable = true }: CaseChecklis
                 )}
                 {/* テキスト: admin/staff のみ編集可 */}
                 {isEditable ? (
-                  <input
-                    className="flex-1 rounded border-0 bg-transparent px-1 py-0.5 text-sm focus:bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring"
-                    defaultValue={item.item}
-                    onBlur={e => updateText(item.id, e.target.value)}
-                  />
+                  <>
+                    {/* スマホ: textarea（max-height でスクロール制限） */}
+                    <textarea
+                      className="sm:hidden flex-1 rounded border-0 bg-transparent px-1 py-0.5 text-sm focus:bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring resize-none overflow-y-auto leading-snug"
+                      style={{ maxHeight: '6rem' }}
+                      rows={1}
+                      ref={el => { if (el) autoResize(el) }}
+                      defaultValue={item.item}
+                      onInput={e => autoResize(e.currentTarget)}
+                      onBlur={e => updateText(item.id, e.currentTarget.value)}
+                    />
+                    {/* PC: input（従来通り） */}
+                    <input
+                      className="hidden sm:block flex-1 rounded border-0 bg-transparent px-1 py-0.5 text-sm focus:bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring"
+                      defaultValue={item.item}
+                      onBlur={e => updateText(item.id, e.target.value)}
+                    />
+                  </>
                 ) : (
                   <span className="flex-1 text-sm">{item.item}</span>
                 )}
@@ -159,11 +177,24 @@ export function CaseChecklistSection({ caseId, isEditable = true }: CaseChecklis
                 )}
                 {/* テキスト: admin/staff のみ編集可 */}
                 {isEditable ? (
-                  <input
-                    className="flex-1 rounded border-0 bg-transparent px-1 py-0.5 text-sm line-through text-muted-foreground focus:no-underline focus:bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring"
-                    defaultValue={item.item}
-                    onBlur={e => updateText(item.id, e.target.value)}
-                  />
+                  <>
+                    {/* スマホ: textarea（max-height でスクロール制限） */}
+                    <textarea
+                      className="sm:hidden flex-1 rounded border-0 bg-transparent px-1 py-0.5 text-sm line-through text-muted-foreground focus:no-underline focus:bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring resize-none overflow-y-auto leading-snug"
+                      style={{ maxHeight: '6rem' }}
+                      rows={1}
+                      ref={el => { if (el) autoResize(el) }}
+                      defaultValue={item.item}
+                      onInput={e => autoResize(e.currentTarget)}
+                      onBlur={e => updateText(item.id, e.currentTarget.value)}
+                    />
+                    {/* PC: input（従来通り） */}
+                    <input
+                      className="hidden sm:block flex-1 rounded border-0 bg-transparent px-1 py-0.5 text-sm line-through text-muted-foreground focus:no-underline focus:bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring"
+                      defaultValue={item.item}
+                      onBlur={e => updateText(item.id, e.target.value)}
+                    />
+                  </>
                 ) : (
                   <span className="flex-1 text-sm line-through text-muted-foreground">{item.item}</span>
                 )}
