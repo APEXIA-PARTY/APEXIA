@@ -17,15 +17,16 @@ interface Props {
   startTime:     string | null
   endTime:       string | null
   notes:         string | null
-  gcalEventId:   string | null   // 登録済みの場合はイベントID
-  appBaseUrl:    string           // 案件詳細URL生成用
-  isEditable:    boolean          // admin/staff のみ操作可
+  gcalEventId:    string | null   // 登録済みの場合はイベントID
+  appBaseUrl:     string           // 案件詳細URL生成用
+  isEditable:     boolean          // admin/staff のみ操作可
   // 追加項目
-  status:        string | null
-  floor:         string | null
-  loadInTime:    string | null
-  fullExitTime:  string | null
-  inquiryDate?: string | null
+  status:         string | null
+  floor:          string | null
+  loadInTime:     string | null
+  fullExitTime:   string | null
+  contactMethod?: string | null
+  inquiryDate?:   string | null
 }
 
 /**
@@ -40,6 +41,7 @@ export function GCalButton({
   caseId, company, eventName, contact, eventDate,
   startTime, endTime, notes, gcalEventId, appBaseUrl, isEditable,
   status, floor, loadInTime, fullExitTime,
+  contactMethod,
 }: Props) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
@@ -95,6 +97,7 @@ export function GCalButton({
     const description = [
       `会社名: ${company ?? '—'}`,
       contact       ? `担当者: ${contact}`                                   : null,
+      contactMethod ? `連絡方法: ${contactMethod}`                           : null,
       statusLabel   ? `ステータス: ${statusLabel}`                           : null,
       floor         ? `フロア: ${floor}`                                     : null,
       loadInTime    ? `入り時間: ${formatTime(loadInTime)}`                  : null,
