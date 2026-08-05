@@ -1,8 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
+import { getCurrentUserAndRole } from '@/lib/auth/helpers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { StatusBadge } from '@/components/cases/StatusBadge'
+import { DuplicateCaseButton } from '@/components/cases/DuplicateCaseButton'
 import { formatDate, formatCurrency, formatDateTime } from '@/lib/utils/format'
 import { STATUS_LIST } from '@/lib/constants/status'
 import { CaseStatus } from '@/types/database'
@@ -26,8 +28,9 @@ export default async function CasesPage({
   searchParams: SearchParams
 }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user, role } = await getCurrentUserAndRole()
   if (!user) redirect('/login')
+  const isEditable = role === 'admin' || role === 'staff'
 
   const page        = Number(searchParams.page ?? 1)
   const pageSize    = 20
@@ -266,23 +269,34 @@ const cases = data ?? []
         ) : (
           <div className="space-y-2">
             {cases.map((c: any) => (
-              <Link
+              // カード全体を <Link> で囲まず、button/a の入れ子を作らない構成。
+              // 案件情報部分だけを内側の <Link> にし、複製ボタンは兄弟要素として独立配置する。
+              <div
                 key={c.id}
-                href={`/cases/${c.id}`}
-                className="block rounded-lg border border-border bg-card p-4 active:bg-muted/50"
+                className="relative rounded-lg border border-border bg-card p-4"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-semibold text-foreground leading-snug">{c.company ?? '—'}</p>
-                  <StatusBadge status={c.status as CaseStatus} autoCancel={c.auto_cancel} size="sm" />
-                </div>
-                <p className="mt-1 text-sm text-muted-foreground line-clamp-1">{c.event_name || '—'}</p>
-                <div className="mt-1.5 flex items-center justify-between gap-2">
-                  <p className="text-xs text-muted-foreground">開催: {formatDate(c.event_date)}</p>
-                  <p className="text-xs font-medium tabular-nums">
-                    {c.estimate_amount > 0 ? formatCurrency(c.estimate_amount) : '—'}
-                  </p>
-                </div>
-              </Link>
+                {isEditable && (
+                  <div className="absolute right-3 top-3 z-10">
+                    <DuplicateCaseButton caseId={c.id} eventName={c.event_name} company={c.company} variant="icon" />
+                  </div>
+                )}
+                <Link
+                  href={`/cases/${c.id}`}
+                  className="block pr-8 active:opacity-70"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-semibold text-foreground leading-snug">{c.company ?? '—'}</p>
+                    <StatusBadge status={c.status as CaseStatus} autoCancel={c.auto_cancel} size="sm" />
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground line-clamp-1">{c.event_name || '—'}</p>
+                  <div className="mt-1.5 flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">開催: {formatDate(c.event_date)}</p>
+                    <p className="text-xs font-medium tabular-nums">
+                      {c.estimate_amount > 0 ? formatCurrency(c.estimate_amount) : '—'}
+                    </p>
+                  </div>
+                </Link>
+              </div>
             ))}
           </div>
         )}
@@ -310,6 +324,9 @@ const cases = data ?? []
                   <th className="whitespace-nowrap px-4 py-3 text-left font-medium text-muted-foreground">認知経路</th>
                   <th className="whitespace-nowrap px-4 py-3 text-right font-medium text-muted-foreground">見積金額</th>
                   <th className="whitespace-nowrap px-4 py-3 text-left font-medium text-muted-foreground">最終更新</th>
+                  {isEditable && (
+                    <th className="whitespace-nowrap px-4 py-3 text-center font-medium text-muted-foreground">操作</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -333,6 +350,11 @@ const cases = data ?? []
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">
                       {formatDateTime(c.updated_at)}
                     </td>
+                    {isEditable && (
+                      <td className="px-4 py-3 text-center">
+                        <DuplicateCaseButton caseId={c.id} eventName={c.event_name} company={c.company} variant="icon" />
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

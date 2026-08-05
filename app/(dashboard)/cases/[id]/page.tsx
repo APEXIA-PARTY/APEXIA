@@ -16,6 +16,7 @@ import { CaseHoldLogSection } from '@/components/cases/CaseDetail/HoldLog'
 import { formatDate, formatCurrency } from '@/lib/utils/format'
 import { CaseStatus } from '@/types/database'
 import { GCalButton } from '@/components/cases/CaseDetail/GCalButton'
+import { DuplicateCaseButton } from '@/components/cases/DuplicateCaseButton'
 import Link from 'next/link'
 import { Pencil, Lock, AlertTriangle } from 'lucide-react'
 import { PdfDownloadButton } from '@/components/cases/PdfDownloadButton'
@@ -89,6 +90,7 @@ export default async function CaseDetailPage({ params }: { params: { id: string 
                   <Pencil className="h-3.5 w-3.5" />
                   編集
                 </Link>
+                <DuplicateCaseButton caseId={params.id} eventName={c.event_name} company={c.company} variant="button" />
                 <CaseDeleteButton caseId={params.id} company={c.company} />
               </>
             ) : (
