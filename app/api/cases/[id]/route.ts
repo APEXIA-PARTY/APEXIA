@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, requireStaff } from '@/lib/auth/helpers'
+import { revalidatePath } from 'next/cache'
 
 // ─── レガシーカラム（UIで直接編集しない / Zodが undefined→null に変換してしまう）
 // これらは body に含まれても Supabase に送らない
@@ -86,6 +87,9 @@ export async function PUT(
       { status: 500 }
     )
   }
+
+  revalidatePath(`/cases/${params.id}`)
+  revalidatePath('/cases')
 
   return NextResponse.json(data)
 }
