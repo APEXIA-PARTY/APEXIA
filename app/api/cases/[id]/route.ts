@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, requireStaff } from '@/lib/auth/helpers'
+import { shouldSetConfirmedAt } from '@/lib/cases/statusTransition'
+import type { CaseStatus } from '@/types/database'
 
 // ─── レガシーカラム（UIで直接編集しない / Zodが undefined→null に変換してしまう）
 // これらは body に含まれても Supabase に送らない
@@ -12,6 +14,7 @@ const STRIP_FIELDS = [
   'created_at',    // 上書き不可
   'updated_at',    // Supabase trigger で自動更新
   'created_by',    // 上書き不可
+  'confirmed_at',  // クライアントから直接指定不可。ステータス遷移検知時にサーバー側でのみセットする
 ] as const
 
 export async function GET(
@@ -58,6 +61,26 @@ export async function PUT(
   for (const [key, value] of Object.entries(body)) {
     if (!(STRIP_FIELDS as readonly string[]).includes(key)) {
       updateData[key] = value
+    }
+  }
+
+  // ─── confirmed_at の自動セット ────────────────────────────────
+  // ステータスが収益ステータス（confirmed/done）へ新規突入した場合のみセットする。
+  // それ以外（confirmed→cancelled等）は confirmed_at に一切触れない（史実として残す）。
+  if ('status' in updateData) {
+    const { data: current, error: currentFetchError } = await supabase
+      .from('cases')
+      .select('status')
+      .eq('id', params.id)
+      .single()
+
+    if (currentFetchError || !current) {
+      // 旧ステータスを確認できない場合は confirmed_at に一切触れない（安全側に倒す）。
+      // ここで undefined 扱いにして進めると、既に確定済みの案件を再保存しただけで
+      // confirmed_at が誤って上書きされる恐れがあるため。
+      console.error('[PUT /api/cases/:id] confirmed_at判定用の現在ステータス取得に失敗:', currentFetchError)
+    } else if (shouldSetConfirmedAt(current.status as CaseStatus, updateData.status as CaseStatus)) {
+      updateData.confirmed_at = new Date().toISOString()
     }
   }
 
