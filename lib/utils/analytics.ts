@@ -3,7 +3,7 @@
  * 0除算ガード・割合計算・前年比などを一元管理
  */
 
-import { CaseStatus } from '@/types/database'
+import type { CaseStatus } from '@/types/database'
 
 // ─── ステータス定義 ────────────────────────────────────────────
 /** 売上集計対象ステータス */
@@ -59,6 +59,9 @@ export interface CaseRow {
   cancel_reason_id: string | null
   cancel_note: string | null
   company: string
+  /** 収益ステータス(confirmed/done)へ新規突入した日時。イベント日方式の月別確定集計でのみ使用。
+   *  select() で明示的に取得したルートのみ実際の値が入る（それ以外は undefined） */
+  confirmed_at?: string | null
 }
 
 export interface KpiResult {
@@ -147,4 +150,91 @@ export function getYears(cases: CaseRow[]): string[] {
     cases.filter((c) => c.inquiry_date).map((c) => c.inquiry_date!.slice(0, 4))
   )
   return Array.from(years).sort().reverse()
+}
+
+// ─── 月別×媒体別集計（イベント日方式） ─────────────────────────
+// 問合せ・下見・確定を、それぞれ「実際にその出来事が起きた月」でカウントする。
+// ・問合せ：inquiry_date の月（現ステータス問わず）
+// ・下見　：preview_datetime の月（現ステータス問わず。過去にキャンセルされても訪問の事実は残る）
+// ・確定　：confirmed_at の月。ただし「現ステータスが confirmed/done であること」も必須条件にする
+//   （confirmed_at は confirmed→cancelled でもクリアしないため、これがないと後でキャンセルされた
+//    案件まで確定件数に混入してしまう）
+
+export interface MediaMonthlyCell {
+  inquiry: number
+  preview: number
+  confirmed: number
+}
+
+export interface MediaMonthlyRow {
+  id: string
+  name: string
+  /** 12ヶ月分。months[0] = 1月 ... months[11] = 12月 */
+  months: MediaMonthlyCell[]
+}
+
+function emptyMonths(): MediaMonthlyCell[] {
+  return Array.from({ length: 12 }, () => ({ inquiry: 0, preview: 0, confirmed: 0 }))
+}
+
+/** "YYYY-MM-DD..." 形式の文字列から、指定した年に属する場合のみ月インデックス(0-11)を返す */
+function monthIndexInYear(dateStr: string | null | undefined, year: string): number | null {
+  if (!dateStr || !dateStr.startsWith(year)) return null
+  const m = Number(dateStr.slice(5, 7)) - 1
+  return m >= 0 && m < 12 ? m : null
+}
+
+/** UNASSIGNED_MEDIA_ID: media_id が NULL（マスタ未設定）の案件をまとめる仮想ID */
+export const UNASSIGNED_MEDIA_ID = '__none__'
+export const UNASSIGNED_MEDIA_LABEL = '（未設定）'
+
+/**
+ * 案件配列を「媒体 × 月」でグルーピングし、問合せ・下見・確定の各件数を集計する。
+ * mediaList には media_id が NULL の案件をまとめる行は含めない（このAPI呼び出し側の責務ではなく、
+ * この関数が自動的に __none__ 行を末尾に追加する）。
+ */
+export function calcMediaMonthly(
+  cases: CaseRow[],
+  mediaList: { id: string; name: string }[],
+  year: string
+): MediaMonthlyRow[] {
+  const monthsByMediaId = new Map<string, MediaMonthlyCell[]>()
+
+  const ensure = (mediaId: string): MediaMonthlyCell[] => {
+    let months = monthsByMediaId.get(mediaId)
+    if (!months) {
+      months = emptyMonths()
+      monthsByMediaId.set(mediaId, months)
+    }
+    return months
+  }
+
+  for (const c of cases) {
+    const mediaId = c.media_id ?? UNASSIGNED_MEDIA_ID
+    const months = ensure(mediaId)
+
+    const inquiryMonth = monthIndexInYear(c.inquiry_date, year)
+    if (inquiryMonth !== null) months[inquiryMonth].inquiry++
+
+    const previewMonth = monthIndexInYear(c.preview_datetime, year)
+    if (previewMonth !== null) months[previewMonth].preview++
+
+    if (REVENUE_STATUSES.includes(c.status)) {
+      const confirmedMonth = monthIndexInYear(c.confirmed_at, year)
+      if (confirmedMonth !== null) months[confirmedMonth].confirmed++
+    }
+  }
+
+  const result: MediaMonthlyRow[] = mediaList.map((m) => ({
+    id: m.id,
+    name: m.name,
+    months: monthsByMediaId.get(m.id) ?? emptyMonths(),
+  }))
+
+  const unassigned = monthsByMediaId.get(UNASSIGNED_MEDIA_ID)
+  if (unassigned) {
+    result.push({ id: UNASSIGNED_MEDIA_ID, name: UNASSIGNED_MEDIA_LABEL, months: unassigned })
+  }
+
+  return result
 }

@@ -12,8 +12,8 @@ const fmtPct  = (v: number) => `${v}%`
 const fmtYoY  = (v: number | null) => v === null ? '—' : v >= 100 ? `▲${v - 100}%` : `▼${100 - v}%`
 
 // ─── 共通テーブルスタイル ──────────────────────────────────────
-const TH = ({ children, right }: { children: React.ReactNode; right?: boolean }) => (
-  <th className={cn('whitespace-nowrap px-3 py-2.5 text-xs font-semibold text-muted-foreground', right ? 'text-right' : 'text-left')}>
+const TH = ({ children, right, className }: { children: React.ReactNode; right?: boolean; className?: string }) => (
+  <th className={cn('whitespace-nowrap px-3 py-2.5 text-xs font-semibold text-muted-foreground', right ? 'text-right' : 'text-left', className)}>
     {children}
   </th>
 )
@@ -467,6 +467,109 @@ function GenericMasterTab({ apiPath, label, columns }: {
           </table>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ─── 認知経路：月別内訳（イベント日方式） ─────────────────────
+// 問合せ・下見・確定を、それぞれ実際にその出来事が起きた月でカウントする追加ビュー。
+// 既存の年間集計（GenericMasterTab）はそのまま、この下に追加表示する。
+const MONTHLY_METRICS = [
+  { key: 'inquiry',   label: '問合せ' },
+  { key: 'preview',   label: '下見' },
+  { key: 'confirmed', label: '確定' },
+] as const
+type MonthlyMetricKey = typeof MONTHLY_METRICS[number]['key']
+
+function MediaMonthlyBreakdown() {
+  const [data, setData]     = useState<{ year: string; rows: { id: string; name: string; months: { inquiry: number; preview: number; confirmed: number }[] }[] } | null>(null)
+  const [year, setYear]     = useState(new Date().getFullYear().toString())
+  const [metric, setMetric] = useState<MonthlyMetricKey>('inquiry')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    fetch(`/api/analytics/media-monthly?year=${year}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setData(d); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [year])
+
+  const monthLabels = Array.from({ length: 12 }, (_, i) => `${i + 1}月`)
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-sm font-semibold">認知経路別 月別内訳</span>
+        <span className="text-xs text-muted-foreground">
+          （問合せ・下見・確定は、それぞれ実際にその出来事が起きた月でカウントします）
+        </span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">年度:</span>
+          <select className="rounded-md border border-input bg-background px-3 py-1.5 text-sm" value={year} onChange={e => setYear(e.target.value)}>
+            {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => <option key={y} value={y}>{y}年</option>)}
+          </select>
+        </div>
+        <div className="flex gap-1 rounded-lg border border-border bg-muted/20 p-1">
+          {MONTHLY_METRICS.map(m => (
+            <button key={m.key} onClick={() => setMetric(m.key)}
+              className={cn('rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                metric === m.key ? 'bg-white shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50')}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {metric === 'confirmed' && (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+          確定件数は「確定日時」記録の導入日以降に確定した案件のみ正確に集計されます。導入前に確定していた案件は含まれません。
+        </p>
+      )}
+
+      {loading || !data ? (
+        <LoadingBlock />
+      ) : (
+        <div className="rounded-lg border border-border bg-card overflow-hidden">
+          {/* 縦・横スクロールともにこのコンテナ内で完結させ、ヘッダー行（月）を
+              スクロール中も画面上部に固定表示する（媒体数が多いと下スクロールで
+              月ラベルが見えなくなるため） */}
+          <div className="max-h-[70vh] overflow-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <TH className="sticky top-0 z-10 bg-muted shadow-[0_1px_0_0_theme(colors.border)]">認知経路</TH>
+                  {monthLabels.map(label => (
+                    <TH key={label} right className="sticky top-0 z-10 bg-muted shadow-[0_1px_0_0_theme(colors.border)]">
+                      {label}
+                    </TH>
+                  ))}
+                  <TH right className="sticky top-0 z-10 bg-muted shadow-[0_1px_0_0_theme(colors.border)]">合計</TH>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {data.rows.map(row => {
+                  const total = row.months.reduce((sum, m) => sum + m[metric], 0)
+                  return (
+                    <tr key={row.id} className="hover:bg-muted/20">
+                      <TD>{row.name}</TD>
+                      {row.months.map((m, i) => (
+                        <TD key={i} right color={m[metric] > 0 ? '' : 'text-muted-foreground/50'}>
+                          {m[metric]}
+                        </TD>
+                      ))}
+                      <TD right bold>{total}</TD>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -981,18 +1084,23 @@ export default function AnalyticsPage() {
 
         {tab === 'monthly'          && <MonthlyTab year={year} onYearChange={setYear} years={Array.from({ length: 5 }, (_, i) => String(new Date().getFullYear() - i))} />}
         {tab === 'yearly'           && <YearlyTab />}
-        {tab === 'media'            && <GenericMasterTab apiPath="/api/analytics/media" label="認知経路" columns={[
-          { key: 'inquiry', label: '問合せ', right: true, fmt: fmtNum },
-          { key: 'inquiryShare', label: '割合', right: true, fmt: fmtPct },
-          { key: 'preview',  label: '下見', right: true, fmt: fmtNum },
-          { key: 'confirmed', label: '確定', right: true, fmt: fmtNum, color: 'text-green-700' },
-          { key: 'confirmShare', label: '確定割合', right: true, fmt: fmtPct },
-          { key: 'revenue', label: '確定売上', right: true, fmt: (v: number) => v > 0 ? fmtYen(v) : '—', color: 'text-green-700' },
-          { key: 'avgPrice', label: '平均単価', right: true, fmt: (v: number) => v > 0 ? fmtYen(v) : '—' },
-          { key: 'cvRate', label: 'CV率', right: true, fmt: fmtPct },
-          { key: 'monthly_cost', label: '月額費用', right: true, fmt: (v: number) => v > 0 ? fmtYen(v) : '—' },
-          { key: 'costPerConfirmed', label: '1件コスト', right: true, fmt: (v: number | null) => v ? fmtYen(v) : '—' },
-        ]} />}
+        {tab === 'media'            && (
+          <div className="space-y-6">
+            <GenericMasterTab apiPath="/api/analytics/media" label="認知経路" columns={[
+              { key: 'inquiry', label: '問合せ', right: true, fmt: fmtNum },
+              { key: 'inquiryShare', label: '割合', right: true, fmt: fmtPct },
+              { key: 'preview',  label: '下見', right: true, fmt: fmtNum },
+              { key: 'confirmed', label: '確定', right: true, fmt: fmtNum, color: 'text-green-700' },
+              { key: 'confirmShare', label: '確定割合', right: true, fmt: fmtPct },
+              { key: 'revenue', label: '確定売上', right: true, fmt: (v: number) => v > 0 ? fmtYen(v) : '—', color: 'text-green-700' },
+              { key: 'avgPrice', label: '平均単価', right: true, fmt: (v: number) => v > 0 ? fmtYen(v) : '—' },
+              { key: 'cvRate', label: 'CV率', right: true, fmt: fmtPct },
+              { key: 'monthly_cost', label: '月額費用', right: true, fmt: (v: number) => v > 0 ? fmtYen(v) : '—' },
+              { key: 'costPerConfirmed', label: '1件コスト', right: true, fmt: (v: number | null) => v ? fmtYen(v) : '—' },
+            ]} />
+            <MediaMonthlyBreakdown />
+          </div>
+        )}
         {tab === 'event-categories' && <EventCategoriesTab />}
         {tab === 'floors'           && <GenericMasterTab apiPath="/api/analytics/floors" label="フロア" columns={[
           { key: 'inquiry', label: '問合せ', right: true, fmt: fmtNum },

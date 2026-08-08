@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { shouldSetConfirmedAt } from '@/lib/cases/statusTransition'
+import type { CaseStatus } from '@/types/database'
 
 // 一覧取得
 export async function GET() {
@@ -24,9 +26,18 @@ export async function POST(req: Request) {
     const supabase = await createClient()
     const body = await req.json()
 
+    // confirmed_at はクライアントから直接指定不可（サーバー側でのみセットする）
+    const { confirmed_at: _ignoredConfirmedAt, ...insertData } = body as Record<string, unknown>
+
+    // 新規作成時点で収益ステータス（confirmed/done）で登録された場合はここでセットする
+    // （旧ステータスは存在しない＝undefinedとして判定する）
+    if (shouldSetConfirmedAt(undefined, insertData.status as CaseStatus | undefined)) {
+      insertData.confirmed_at = new Date().toISOString()
+    }
+
     const { data, error } = await supabase
       .from('cases')
-      .insert(body)
+      .insert(insertData)
       .select()
       .single()
 

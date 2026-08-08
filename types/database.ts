@@ -173,6 +173,10 @@ export interface Case {
   cancel_reason_id: string | null
   cancel_note: string | null
 
+  // 収益ステータス（confirmed/done）へ新規突入した日時。集計（月別確定件数）専用。
+  // クライアントからは直接指定不可（API側で自動セット）
+  confirmed_at: string | null
+
   // Google Calendar
   gcal_event_id: string | null
 
