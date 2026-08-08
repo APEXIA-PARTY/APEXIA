@@ -7,13 +7,6 @@ import { cn } from '@/lib/utils/cn'
 
 type CheckState = '確認中' | '確定' | 'キャンセル'
 
-// クリックで 確認中 → 確定 → キャンセル → 確認中 と循環させる
-const NEXT_STATE: Record<CheckState, CheckState> = {
-  '確認中': '確定',
-  '確定': 'キャンセル',
-  'キャンセル': '確認中',
-}
-
 interface CheckItem {
   id: string
   item: string
@@ -57,8 +50,8 @@ export function CaseChecklistSection({ caseId, isEditable = true }: CaseChecklis
     setAdding(false)
   }
 
-  const toggleState = async (item: CheckItem) => {
-    const next: CheckState = NEXT_STATE[item.state]
+  // 明示的に状態を変更する（キャンセルにする／再開する／確認中⇄確定のトグル、すべてこれを使う）
+  const changeState = async (item: CheckItem, next: CheckState) => {
     const res = await fetch(`/api/cases/${caseId}/checklist`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -69,6 +62,11 @@ export function CaseChecklistSection({ caseId, isEditable = true }: CaseChecklis
     } else {
       toast.error('更新に失敗しました')
     }
+  }
+
+  // アイコンクリックは「確認中⇄確定」の2状態のみを切り替える
+  const toggleState = (item: CheckItem) => {
+    changeState(item, item.state === '確認中' ? '確定' : '確認中')
   }
 
   const updateText = async (id: string, text: string) => {
@@ -154,6 +152,15 @@ export function CaseChecklistSection({ caseId, isEditable = true }: CaseChecklis
                 ) : (
                   <span className="flex-1 text-sm text-muted-foreground">{item.item}</span>
                 )}
+                {/* キャンセルにする: admin/staff のみ、常時表示 */}
+                {isEditable && (
+                  <button
+                    onClick={() => changeState(item, 'キャンセル')}
+                    className="shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-xs text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+                  >
+                    キャンセルにする
+                  </button>
+                )}
                 {/* 削除: admin/staff のみ */}
                 {isEditable && (
                   <button
@@ -174,7 +181,7 @@ export function CaseChecklistSection({ caseId, isEditable = true }: CaseChecklis
             <p className="text-xs font-medium text-green-700">確定</p>
             {items.filter(i => i.state === '確定').map(item => (
               <div key={item.id} className="flex items-center gap-2 group">
-                {/* トグル（確定→キャンセル）: admin/staff のみ */}
+                {/* トグル（確定⇄確認中）: admin/staff のみ */}
                 {isEditable ? (
                   <button onClick={() => toggleState(item)} className="shrink-0 text-green-500 hover:text-green-700">
                     <CheckCircle2 className="h-4 w-4" />
@@ -205,6 +212,15 @@ export function CaseChecklistSection({ caseId, isEditable = true }: CaseChecklis
                 ) : (
                   <span className="flex-1 text-sm">{item.item}</span>
                 )}
+                {/* キャンセルにする: admin/staff のみ、常時表示 */}
+                {isEditable && (
+                  <button
+                    onClick={() => changeState(item, 'キャンセル')}
+                    className="shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-xs text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+                  >
+                    キャンセルにする
+                  </button>
+                )}
                 {/* 削除: admin/staff のみ */}
                 {isEditable && (
                   <button
@@ -225,9 +241,9 @@ export function CaseChecklistSection({ caseId, isEditable = true }: CaseChecklis
             <p className="text-xs font-medium text-muted-foreground">キャンセル</p>
             {items.filter(i => i.state === 'キャンセル').map(item => (
               <div key={item.id} className="flex items-center gap-2 group opacity-70">
-                {/* トグル（キャンセル→確認中）: admin/staff のみ */}
+                {/* 再開（キャンセル→確認中）: admin/staff のみ */}
                 {isEditable ? (
-                  <button onClick={() => toggleState(item)} className="shrink-0 text-muted-foreground/60 hover:text-muted-foreground">
+                  <button onClick={() => changeState(item, '確認中')} className="shrink-0 text-muted-foreground/60 hover:text-muted-foreground" title="再開する">
                     <XCircle className="h-4 w-4" />
                   </button>
                 ) : (
@@ -255,6 +271,15 @@ export function CaseChecklistSection({ caseId, isEditable = true }: CaseChecklis
                   </>
                 ) : (
                   <span className="flex-1 text-sm line-through text-muted-foreground">{item.item}</span>
+                )}
+                {/* 再開する: admin/staff のみ、常時表示 */}
+                {isEditable && (
+                  <button
+                    onClick={() => changeState(item, '確認中')}
+                    className="shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-xs text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+                  >
+                    再開する
+                  </button>
                 )}
                 {/* 削除: admin/staff のみ */}
                 {isEditable && (
