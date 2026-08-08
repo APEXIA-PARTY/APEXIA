@@ -12,8 +12,8 @@ const fmtPct  = (v: number) => `${v}%`
 const fmtYoY  = (v: number | null) => v === null ? '—' : v >= 100 ? `▲${v - 100}%` : `▼${100 - v}%`
 
 // ─── 共通テーブルスタイル ──────────────────────────────────────
-const TH = ({ children, right }: { children: React.ReactNode; right?: boolean }) => (
-  <th className={cn('whitespace-nowrap px-3 py-2.5 text-xs font-semibold text-muted-foreground', right ? 'text-right' : 'text-left')}>
+const TH = ({ children, right, className }: { children: React.ReactNode; right?: boolean; className?: string }) => (
+  <th className={cn('whitespace-nowrap px-3 py-2.5 text-xs font-semibold text-muted-foreground', right ? 'text-right' : 'text-left', className)}>
     {children}
   </th>
 )
@@ -534,13 +534,20 @@ function MediaMonthlyBreakdown() {
         <LoadingBlock />
       ) : (
         <div className="rounded-lg border border-border bg-card overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* 縦・横スクロールともにこのコンテナ内で完結させ、ヘッダー行（月）を
+              スクロール中も画面上部に固定表示する（媒体数が多いと下スクロールで
+              月ラベルが見えなくなるため） */}
+          <div className="max-h-[70vh] overflow-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border bg-muted/40">
-                  <TH>認知経路</TH>
-                  {monthLabels.map(label => <TH key={label} right>{label}</TH>)}
-                  <TH right>合計</TH>
+                <tr className="border-b border-border">
+                  <TH className="sticky top-0 z-10 bg-muted shadow-[0_1px_0_0_theme(colors.border)]">認知経路</TH>
+                  {monthLabels.map(label => (
+                    <TH key={label} right className="sticky top-0 z-10 bg-muted shadow-[0_1px_0_0_theme(colors.border)]">
+                      {label}
+                    </TH>
+                  ))}
+                  <TH right className="sticky top-0 z-10 bg-muted shadow-[0_1px_0_0_theme(colors.border)]">合計</TH>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
