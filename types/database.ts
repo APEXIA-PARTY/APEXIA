@@ -36,7 +36,7 @@ export type PaymentMethod = 'キャッシュレス' | '現金' | '現金+キャ�
 
 export type FileType = '見積書' | '請求書' | '進行表' | 'レイアウト図' | 'その他'
 
-export type ChecklistState = '確認中' | '確定'
+export type ChecklistState = '確認中' | '確定' | 'キャンセル'
 export type OptionState = '未確認' | '質問中' | '検討中' | '確定' | '不要'
 
 export type CaseHistoryActionType =
