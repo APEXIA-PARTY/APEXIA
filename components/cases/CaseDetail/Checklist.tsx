@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, CheckCircle2, Circle } from 'lucide-react'
+import { Plus, Trash2, CheckCircle2, Circle, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils/cn'
 
-type CheckState = '確認中' | '確定'
+type CheckState = '確認中' | '確定' | 'キャンセル'
 
 interface CheckItem {
   id: string
@@ -50,8 +50,8 @@ export function CaseChecklistSection({ caseId, isEditable = true }: CaseChecklis
     setAdding(false)
   }
 
-  const toggleState = async (item: CheckItem) => {
-    const next: CheckState = item.state === '確認中' ? '確定' : '確認中'
+  // 明示的に状態を変更する（キャンセルにする／再開する／確認中⇄確定のトグル、すべてこれを使う）
+  const changeState = async (item: CheckItem, next: CheckState) => {
     const res = await fetch(`/api/cases/${caseId}/checklist`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -62,6 +62,11 @@ export function CaseChecklistSection({ caseId, isEditable = true }: CaseChecklis
     } else {
       toast.error('更新に失敗しました')
     }
+  }
+
+  // アイコンクリックは「確認中⇄確定」の2状態のみを切り替える
+  const toggleState = (item: CheckItem) => {
+    changeState(item, item.state === '確認中' ? '確定' : '確認中')
   }
 
   const updateText = async (id: string, text: string) => {
@@ -129,7 +134,7 @@ export function CaseChecklistSection({ caseId, isEditable = true }: CaseChecklis
                   <>
                     {/* スマホ: textarea（max-height でスクロール制限） */}
                     <textarea
-                      className="sm:hidden flex-1 rounded border-0 bg-transparent px-1 py-0.5 text-sm focus:bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring resize-none overflow-y-auto leading-snug"
+                      className="sm:hidden flex-1 rounded border-0 bg-transparent px-1 py-0.5 text-sm text-muted-foreground focus:bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring resize-none overflow-y-auto leading-snug"
                       style={{ maxHeight: '6rem' }}
                       rows={1}
                       ref={el => { if (el) autoResize(el) }}
@@ -139,13 +144,22 @@ export function CaseChecklistSection({ caseId, isEditable = true }: CaseChecklis
                     />
                     {/* PC: input（従来通り） */}
                     <input
-                      className="hidden sm:block flex-1 rounded border-0 bg-transparent px-1 py-0.5 text-sm focus:bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring"
+                      className="hidden sm:block flex-1 rounded border-0 bg-transparent px-1 py-0.5 text-sm text-muted-foreground focus:bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring"
                       defaultValue={item.item}
                       onBlur={e => updateText(item.id, e.target.value)}
                     />
                   </>
                 ) : (
-                  <span className="flex-1 text-sm">{item.item}</span>
+                  <span className="flex-1 text-sm text-muted-foreground">{item.item}</span>
+                )}
+                {/* キャンセルにする: admin/staff のみ、常時表示 */}
+                {isEditable && (
+                  <button
+                    onClick={() => changeState(item, 'キャンセル')}
+                    className="shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-xs text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+                  >
+                    キャンセルにする
+                  </button>
                 )}
                 {/* 削除: admin/staff のみ */}
                 {isEditable && (
@@ -166,14 +180,74 @@ export function CaseChecklistSection({ caseId, isEditable = true }: CaseChecklis
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-green-700">確定</p>
             {items.filter(i => i.state === '確定').map(item => (
-              <div key={item.id} className="flex items-center gap-2 group opacity-70">
-                {/* トグル（確定→確認中）: admin/staff のみ */}
+              <div key={item.id} className="flex items-center gap-2 group">
+                {/* トグル（確定⇄確認中）: admin/staff のみ */}
                 {isEditable ? (
                   <button onClick={() => toggleState(item)} className="shrink-0 text-green-500 hover:text-green-700">
                     <CheckCircle2 className="h-4 w-4" />
                   </button>
                 ) : (
                   <CheckCircle2 className="h-4 w-4 shrink-0 text-green-400" />
+                )}
+                {/* テキスト: admin/staff のみ編集可 */}
+                {isEditable ? (
+                  <>
+                    {/* スマホ: textarea（max-height でスクロール制限） */}
+                    <textarea
+                      className="sm:hidden flex-1 rounded border-0 bg-transparent px-1 py-0.5 text-sm focus:bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring resize-none overflow-y-auto leading-snug"
+                      style={{ maxHeight: '6rem' }}
+                      rows={1}
+                      ref={el => { if (el) autoResize(el) }}
+                      defaultValue={item.item}
+                      onInput={e => autoResize(e.currentTarget)}
+                      onBlur={e => updateText(item.id, e.currentTarget.value)}
+                    />
+                    {/* PC: input（従来通り） */}
+                    <input
+                      className="hidden sm:block flex-1 rounded border-0 bg-transparent px-1 py-0.5 text-sm focus:bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring"
+                      defaultValue={item.item}
+                      onBlur={e => updateText(item.id, e.target.value)}
+                    />
+                  </>
+                ) : (
+                  <span className="flex-1 text-sm">{item.item}</span>
+                )}
+                {/* キャンセルにする: admin/staff のみ、常時表示 */}
+                {isEditable && (
+                  <button
+                    onClick={() => changeState(item, 'キャンセル')}
+                    className="shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-xs text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+                  >
+                    キャンセルにする
+                  </button>
+                )}
+                {/* 削除: admin/staff のみ */}
+                {isEditable && (
+                  <button
+                    onClick={() => deleteItem(item.id)}
+                    className="invisible shrink-0 text-muted-foreground/40 hover:text-destructive group-hover:visible"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* キャンセル */}
+        {items.filter(i => i.state === 'キャンセル').length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">キャンセル</p>
+            {items.filter(i => i.state === 'キャンセル').map(item => (
+              <div key={item.id} className="flex items-center gap-2 group opacity-70">
+                {/* 再開（キャンセル→確認中）: admin/staff のみ */}
+                {isEditable ? (
+                  <button onClick={() => changeState(item, '確認中')} className="shrink-0 text-muted-foreground/60 hover:text-muted-foreground" title="再開する">
+                    <XCircle className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <XCircle className="h-4 w-4 shrink-0 text-muted-foreground/40" />
                 )}
                 {/* テキスト: admin/staff のみ編集可 */}
                 {isEditable ? (
@@ -197,6 +271,15 @@ export function CaseChecklistSection({ caseId, isEditable = true }: CaseChecklis
                   </>
                 ) : (
                   <span className="flex-1 text-sm line-through text-muted-foreground">{item.item}</span>
+                )}
+                {/* 再開する: admin/staff のみ、常時表示 */}
+                {isEditable && (
+                  <button
+                    onClick={() => changeState(item, '確認中')}
+                    className="shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-xs text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+                  >
+                    再開する
+                  </button>
                 )}
                 {/* 削除: admin/staff のみ */}
                 {isEditable && (

@@ -7,7 +7,7 @@ type Params = { params: { id: string } }
 
 const checklistItemSchema = z.object({
   item:       z.string().min(1, '確認事項を入力してください').max(500),
-  state:      z.enum(['確認中', '確定']).default('確認中'),
+  state:      z.enum(['確認中', '確定', 'キャンセル']).default('確認中'),
   sort_order: z.number().int().min(0).default(0),
 })
 
@@ -58,7 +58,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
   const schema = z.object({
     id:    z.string().uuid(),
     item:  z.string().min(1).max(500).optional(),
-    state: z.enum(['確認中', '確定']).optional(),
+    state: z.enum(['確認中', '確定', 'キャンセル']).optional(),
     sort_order: z.number().int().min(0).optional(),
   })
   const parsed = schema.safeParse(body)

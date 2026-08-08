@@ -111,13 +111,24 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
     if (!url) url = (await fetchSignedUrl(file.id)) ?? undefined
     if (!url) return
 
-    const a = document.createElement('a')
-    a.href = url
-    a.download = file.file_name
-    a.target = '_blank'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
+    // 署名付きURLは別オリジンのため、<a download> は無視されブラウザが
+    // ダウンロードせず開こうとしてしまう。Blobとして取得し、同一オリジンの
+    // blob: URLを経由してダウンロードさせる。
+    try {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error('failed to fetch file')
+      const blob = await res.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = file.file_name
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(blobUrl)
+    } catch {
+      toast.error('ダウンロードに失敗しました')
+    }
   }
 
   const openInNewTab = async (file: FileWithUrl) => {

@@ -27,6 +27,7 @@ interface Props {
   fullExitTime:   string | null
   contactMethod?: string | null
   inquiryDate?:   string | null
+  media?:         string | null
 }
 
 /**
@@ -41,7 +42,7 @@ export function GCalButton({
   caseId, company, eventName, contact, eventDate,
   startTime, endTime, notes, gcalEventId, appBaseUrl, isEditable,
   status, floor, loadInTime, fullExitTime,
-  contactMethod,
+  contactMethod, media,
 }: Props) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
@@ -97,6 +98,7 @@ export function GCalButton({
     const description = [
       `会社名: ${company ?? '—'}`,
       contact       ? `担当者: ${contact}`                                   : null,
+      media         ? `認知経路: ${media}`                                   : null,
       contactMethod ? `連絡方法: ${contactMethod}`                           : null,
       statusLabel   ? `ステータス: ${statusLabel}`                           : null,
       floor         ? `フロア: ${floor}`                                     : null,

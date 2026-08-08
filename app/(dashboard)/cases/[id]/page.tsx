@@ -82,6 +82,7 @@ export default async function CaseDetailPage({ params }: { params: { id: string 
                   loadInTime={c.load_in_time ?? (c as any).setup_time}
                   fullExitTime={c.full_exit_time}
                   contactMethod={(c.contact_method_master as any)?.name ?? null}
+                  media={(c.media_master as any)?.name ?? null}
                 />
                 <Link
                   href={`/cases/${params.id}/edit`}
