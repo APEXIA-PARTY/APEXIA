@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, requireStaff } from '@/lib/auth/helpers'
 import { shouldSetConfirmedAt } from '@/lib/cases/statusTransition'
@@ -109,6 +110,9 @@ export async function PUT(
       { status: 500 }
     )
   }
+
+  revalidatePath(`/cases/${params.id}`)
+  revalidatePath('/cases')
 
   return NextResponse.json(data)
 }

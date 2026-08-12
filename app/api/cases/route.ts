@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { shouldSetConfirmedAt } from '@/lib/cases/statusTransition'
 import type { CaseStatus } from '@/types/database'
@@ -45,6 +46,9 @@ export async function POST(req: Request) {
       console.error(error)
       return NextResponse.json({ message: error.message }, { status: 500 })
     }
+
+    revalidatePath(`/cases/${data.id}`)
+    revalidatePath('/cases')
 
     return NextResponse.json(data)
   } catch (error) {

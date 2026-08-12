@@ -9,6 +9,9 @@ const nextConfig = {
       'playwright-core',
       '@sparticuz/chromium',
     ],
+    staleTimes: {
+      dynamic: 0,
+    },
   },
 }
 

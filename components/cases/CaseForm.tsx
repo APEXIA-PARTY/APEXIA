@@ -316,11 +316,8 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
       }
       const data = await res.json().catch(() => ({}))
       toast.success(isEdit ? '案件を更新しました' : '案件を登録しました')
-      // Next.js 14 App Router のクライアント側ルーターキャッシュを回避するため
-      // router.push + router.refresh の組み合わせではキャッシュが残る場合がある。
-      // window.location.href によるハードナビゲーションで確実に最新データを取得する。
       const redirectUrl = data?.id ? `/cases/${data.id}` : '/cases'
-      window.location.href = redirectUrl
+      router.push(redirectUrl)
     } finally {
       setLoading(false)
     }
