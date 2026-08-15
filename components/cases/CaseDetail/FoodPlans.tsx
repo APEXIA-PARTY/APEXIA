@@ -33,11 +33,12 @@ interface FoodPlanItem {
 interface FoodPlanMasterItem {
   id: string
   name: string
+  default_price: number | null
   display_order: number
   is_active: boolean
 }
 
-/** API 取得失敗時のフォールバック候補 */
+/** API 取得失敗時のフォールバック候補（単価はマスタ未取得のため未設定扱い） */
 const FALLBACK_MASTER: FoodPlanMasterItem[] = [
   '5,000ビュッフェ',
   '6,000ビュッフェ',
@@ -47,7 +48,7 @@ const FALLBACK_MASTER: FoodPlanMasterItem[] = [
   '4,500ビュッフェ',
   '4,200ビュッフェ',
   '4,000ビュッフェ',
-].map((name, i) => ({ id: `fallback-${i}`, name, display_order: i * 10, is_active: true }))
+].map((name, i) => ({ id: `fallback-${i}`, name, default_price: null, display_order: i * 10, is_active: true }))
 
 // ─── スタイル定数 ─────────────────────────────────────────────
 const INP =
@@ -99,12 +100,18 @@ export function CaseFoodPlansSection({ caseId, isEditable = true }: CaseFoodPlan
 
   // ─── CRUD ─────────────────────────────────────────────────
   const addItem = async (preset?: FoodPlanMasterItem) => {
+    // 候補（マスタ由来）の場合、単価が未設定なら 0円で追加せずここで止める
+    if (preset && (preset.default_price === null || preset.default_price === undefined)) {
+      toast.error('マスタ管理で単価を設定してください')
+      return
+    }
+
     const body = preset
       ? {
           food_plan_id: preset.id.startsWith('fallback-') ? null : preset.id,
           name: preset.name,
           qty: 1,
-          unit_price: 0,
+          unit_price: preset.default_price,
         }
       : { name: '新規プラン', qty: 1, unit_price: 0 }
 
@@ -117,7 +124,8 @@ export function CaseFoodPlansSection({ caseId, isEditable = true }: CaseFoodPlan
     if (res.ok) {
       await fetchItems()
     } else {
-      toast.error('追加に失敗しました')
+      const err = await res.json().catch(() => null)
+      toast.error(err?.message || '追加に失敗しました')
     }
   }
 

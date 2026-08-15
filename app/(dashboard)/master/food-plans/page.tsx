@@ -6,6 +6,7 @@ import { foodPlanSchema } from '@/lib/validations/master'
 
 type FoodPlanItem = {
   id: string; name: string
+  default_price: number | null
   display_order: number; is_active: boolean
 }
 
@@ -16,6 +17,15 @@ const config: MasterPageConfig<FoodPlanItem> = {
   schema: foodPlanSchema,
   columns: [
     { key: 'name', label: '名称' },
+    {
+      key: 'default_price',
+      label: '単価',
+      render: (item) => (
+        item.default_price === null || item.default_price === undefined
+          ? <span className="text-xs text-muted-foreground">未設定</span>
+          : <span className="tabular-nums">¥{item.default_price.toLocaleString()}</span>
+      ),
+    },
     {
       key: 'is_active',
       label: '状態',
@@ -29,7 +39,8 @@ const config: MasterPageConfig<FoodPlanItem> = {
     },
   ],
   fields: [
-    { name: 'name',          label: '名称',   type: 'text',   required: true, placeholder: '例: 5,000ビュッフェ' },
+    { name: 'name',          label: '名称',   type: 'text',            required: true, placeholder: '例: 5,000ビュッフェ' },
+    { name: 'default_price', label: '単価',   type: 'number-nullable', placeholder: '未設定（空欄のまま）' },
     { name: 'display_order', label: '表示順', type: 'number' },
     { name: 'is_active',     label: '有効',   type: 'toggle' },
   ],
