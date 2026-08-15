@@ -45,10 +45,31 @@ export async function POST(request: NextRequest, { params }: Params) {
     return NextResponse.json({ message: 'バリデーションエラー', errors: parsed.error.flatten() }, { status: 422 })
   }
 
+  const vals = parsed.data
+
+  // food_plan_id が指定されている場合（候補から追加）、マスタの単価が
+  // 唯一の正とする。クライアントの unit_price は使わずマスタ値で上書きする。
+  // マスタの単価が未設定（NULL）の場合は 0円で追加せず、エラーで止める。
+  if (vals.food_plan_id) {
+    const { data: master, error: masterError } = await supabase
+      .from('food_plan_master')
+      .select('default_price')
+      .eq('id', vals.food_plan_id)
+      .single()
+
+    if (masterError || !master) {
+      return NextResponse.json({ message: '選択したプランがマスタに見つかりません' }, { status: 422 })
+    }
+    if (master.default_price === null) {
+      return NextResponse.json({ message: 'マスタ管理で単価を設定してください' }, { status: 422 })
+    }
+    vals.unit_price = master.default_price
+  }
+
   // amount は GENERATED ALWAYS AS (qty * unit_price) STORED なので送らない
   const { data, error: dbError } = await supabase
     .from('case_food_plans')
-    .insert({ ...parsed.data, case_id: params.id })
+    .insert({ ...vals, case_id: params.id })
     .select()
     .single()
 

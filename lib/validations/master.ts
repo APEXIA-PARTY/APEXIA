@@ -55,7 +55,11 @@ export const optionSchema = z.object({
 export type OptionFormValues = z.infer<typeof optionSchema>
 
 // ─── 飲食プラン ───────────────────────────────────────────────
-export const foodPlanSchema = z.object({ ...baseSchema })
+// default_price は追加・編集時に必須（空欄・負数は拒否、0円は許可）
+export const foodPlanSchema = z.object({
+  ...baseSchema,
+  default_price: z.number().int().min(0),
+})
 export type FoodPlanFormValues = z.infer<typeof foodPlanSchema>
 
 // ─── display_order 一括更新 ───────────────────────────────────

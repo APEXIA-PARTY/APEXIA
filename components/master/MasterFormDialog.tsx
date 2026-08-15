@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils/cn'
 export interface FieldDef {
   name: string
   label: string
-  type: 'text' | 'number' | 'textarea' | 'select' | 'toggle' | 'hidden'
+  type: 'text' | 'number' | 'number-nullable' | 'textarea' | 'select' | 'toggle' | 'hidden'
   placeholder?: string
   options?: { value: string | number | boolean; label: string }[]
   dependsOn?: string         // この field が truthy なら表示
@@ -105,6 +105,16 @@ export function MasterFormDialog({
                   <input
                     {...register(field.name, {
                       setValueAs: (v) => v === '' || v === null || v === undefined ? 0 : Number(v),
+                    })}
+                    type="number" min="0" className={INP} placeholder={field.placeholder}
+                  />
+                )}
+
+                {/* 空欄を 0 ではなく null（未設定）として扱う数値フィールド */}
+                {field.type === 'number-nullable' && (
+                  <input
+                    {...register(field.name, {
+                      setValueAs: (v) => v === '' || v === null || v === undefined ? null : Number(v),
                     })}
                     type="number" min="0" className={INP} placeholder={field.placeholder}
                   />
