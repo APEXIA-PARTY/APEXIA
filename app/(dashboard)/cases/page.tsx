@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { StatusBadge } from '@/components/cases/StatusBadge'
 import { DuplicateCaseButton } from '@/components/cases/DuplicateCaseButton'
+import { EventDateFilterFields } from '@/components/cases/EventDateFilterFields'
 import { formatDate, formatCurrency, formatDateTime } from '@/lib/utils/format'
 import { STATUS_LIST } from '@/lib/constants/status'
 import { CaseStatus } from '@/types/database'
@@ -57,26 +58,24 @@ export default async function CasesPage({
   if (searchParams.status)   query = query.eq('status', searchParams.status as CaseStatus)
   if (searchParams.media_id) query = query.eq('media_id', searchParams.media_id)
   if (searchParams.floor_id) query = query.eq('floor_id', searchParams.floor_id)
-  // inquiry_date が null のレコードを除外（年フィルターが機能するように）
-  // month 単独指定は year がないと無効なので、year がある場合のみ除外する
-  if (searchParams.year) {
-    query = query.not('inquiry_date', 'is', null)
-  }
 
-  // 年・月フィルター（inquiry_date ベース）
-  // month は year が選択されている場合のみ有効。year 未選択の month は無視する。
+  // 開催年・開催月フィルター（event_date ベース）
+  // month は year が選択されている場合のみ有効。year 未選択の month は無視する
+  // （UI側でも year 未選択時は month を選択不可にしている）。
+  // event_date が NULL の案件は .gte()/.lte() の比較対象にならないため、
+  // 年月を指定した場合は自然に除外される。
   if (searchParams.year) {
     const y = searchParams.year
     if (searchParams.month) {
       const m = searchParams.month.padStart(2, '0')
       const lastDay = new Date(Number(y), Number(searchParams.month), 0).getDate()
       query = query
-        .gte('inquiry_date', `${y}-${m}-01`)
-        .lte('inquiry_date', `${y}-${m}-${String(lastDay).padStart(2, '0')}`)
+        .gte('event_date', `${y}-${m}-01`)
+        .lte('event_date', `${y}-${m}-${String(lastDay).padStart(2, '0')}`)
     } else {
       query = query
-        .gte('inquiry_date', `${y}-01-01`)
-        .lte('inquiry_date', `${y}-12-31`)
+        .gte('event_date', `${y}-01-01`)
+        .lte('event_date', `${y}-12-31`)
     }
   }
 
@@ -92,9 +91,9 @@ const cases = data ?? []
     supabase.from('floor_master').select('id, name').eq('is_active', true).order('display_order'),
   ])
 
-  // 年選択肢: 現在年から過去5年を固定生成（DB全件取得しない）
+  // 年選択肢: 現在年を基準に未来2年・過去4年を固定生成（DB全件取得しない）
   const currentYear = new Date().getFullYear()
-  const yearOptions = Array.from({ length: 5 }, (_, i) => String(currentYear - i))
+  const yearOptions = Array.from({ length: 7 }, (_, i) => String(currentYear + 2 - i))
 
   const totalPages = Math.ceil((count ?? 0) / pageSize)
 
@@ -124,8 +123,8 @@ const cases = data ?? []
         title="案件一覧"
         description={(() => {
           const filterLabel = [
-            searchParams.year   ? `${searchParams.year}年`           : '',
-            searchParams.month  ? `${Number(searchParams.month)}月`  : '',
+            searchParams.year   ? `開催${searchParams.year}年`           : '',
+            searchParams.month  ? `開催${Number(searchParams.month)}月`  : '',
             searchParams.status ?? '',
             searchParams.media_id
               ? ((mediaList as any[]).find((m: any) => m.id === searchParams.media_id)?.name ?? '')
@@ -159,28 +158,12 @@ const cases = data ?? []
               className="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
-          {/* 年 */}
-          <select
-            name="year"
-            defaultValue={searchParams.year ?? ''}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-[100px]"
-          >
-            <option value="">全年</option>
-            {yearOptions.map((y) => (
-              <option key={y} value={y}>{y}年</option>
-            ))}
-          </select>
-          {/* 月 */}
-          <select
-            name="month"
-            defaultValue={searchParams.month ?? ''}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-[90px]"
-          >
-            <option value="">全月</option>
-            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-              <option key={m} value={String(m).padStart(2, '0')}>{m}月</option>
-            ))}
-          </select>
+          {/* 開催年・開催月 */}
+          <EventDateFilterFields
+            yearOptions={yearOptions}
+            defaultYear={searchParams.year ?? ''}
+            defaultMonth={searchParams.month ?? ''}
+          />
           {/* ステータス */}
           <select
             name="status"
