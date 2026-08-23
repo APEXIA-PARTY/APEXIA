@@ -108,11 +108,14 @@ export function EventYearlyAnalysis() {
           previous: m.previous,
         }))
 
+        // 未来年選択時のみ「開催予定案件数」に表示ラベルを変える（集計値・ロジックは変更しない）
+        const kpiLabel = Number(year) > currentYearNum ? '開催予定案件数' : '開催案件数'
+
         return (
           <>
             {/* KPI: PC=横4列 / スマホ=2列×2段 */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <KpiCard label="開催案件数" value={`${currentTotal}件`} />
+              <KpiCard label={kpiLabel} value={`${currentTotal}件`} />
               <KpiCard label="前年開催案件数" value={`${previousTotal}件`} />
               <KpiCard label="前年比" value={formatEventMonthYoYPercent(currentTotal, previousTotal)} />
               <KpiCard label="前年差" value={formatEventMonthYoYDiff(currentTotal, previousTotal)} />
