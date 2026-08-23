@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { StatusBadge } from '@/components/cases/StatusBadge'
 import { DuplicateCaseButton } from '@/components/cases/DuplicateCaseButton'
 import { EventDateFilterFields } from '@/components/cases/EventDateFilterFields'
+import { EventMonthSummary } from '@/components/cases/EventMonthSummary'
 import { formatDate, formatCurrency, formatDateTime } from '@/lib/utils/format'
 import { STATUS_LIST } from '@/lib/constants/status'
 import { CaseStatus } from '@/types/database'
@@ -210,6 +211,16 @@ const cases = data ?? []
           </Link>
         </form>
       </div>
+
+      {/* 開催月別サマリー: 開催年・開催月が両方指定されている場合のみ表示。
+          ステータス・認知経路・フロア・検索フィルタには連動しない（常に開催月全体を集計）。 */}
+      {searchParams.year && searchParams.month && (
+        <EventMonthSummary
+          supabase={supabase}
+          year={searchParams.year}
+          month={searchParams.month}
+        />
+      )}
 
       {/* ソートバー */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
