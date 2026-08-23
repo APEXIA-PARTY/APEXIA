@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { TrendingUp, BarChart2, Users, Calendar, XCircle, DollarSign } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
+import { EventYearlyAnalysis } from '@/components/analytics/EventYearlyAnalysis'
 
 // ─── フォーマットユーティリティ ────────────────────────────────
 const fmtYen  = (v: number) => v >= 10000 ? `¥${Math.round(v / 10000)}万` : `¥${v.toLocaleString()}`
@@ -1000,7 +1001,12 @@ function LoadingBlock() {
 }
 
 // ─── メインページ ──────────────────────────────────────────────
+type AnalyticsView = 'inquiry' | 'event'
+
 export default function AnalyticsPage() {
+  // 大分類: ①問合せ分析（inquiry_date基準、既存の全機能） / ②開催月分析（event_date基準、新規）
+  // 両方を同時表示すると基準日の異なる数字が混在し誤認を招くため、必ずどちらか一方のみ表示する。
+  const [view, setView] = useState<AnalyticsView>('inquiry')
   const [tab, setTab]   = useState<TabKey>('monthly')
   const [year, setYear] = useState(new Date().getFullYear().toString())
   const [summary, setSummary] = useState<any>(null)
@@ -1027,8 +1033,24 @@ export default function AnalyticsPage() {
     <div className="space-y-6">
       <PageHeader title="分析・集計" description="問合せ・売上・媒体・分類ごとの集計データ" />
 
+      {/* 大分類切り替え: ①問合せ分析 / ②開催月分析（基準日が異なるため同時表示しない） */}
+      <div className="flex min-w-max gap-1 rounded-lg border border-border bg-muted/20 p-1">
+        {[
+          { key: 'inquiry' as const, label: '① 問合せ分析' },
+          { key: 'event'   as const, label: '② 開催月分析' },
+        ].map(v => (
+          <button key={v.key} onClick={() => setView(v.key)}
+            className={cn('rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+              view === v.key ? 'bg-white shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50')}>
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      {view === 'event' && <EventYearlyAnalysis />}
+
       {/* KPIカード（年間） */}
-      {yk && (
+      {view === 'inquiry' && yk && (
         <div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">年間KPI（{new Date().getFullYear()}年）</p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-11">
@@ -1048,7 +1070,7 @@ export default function AnalyticsPage() {
       )}
 
       {/* ランキング */}
-      {summary?.rankings && (
+      {view === 'inquiry' && summary?.rankings && (
         <div className="grid gap-4 lg:grid-cols-2">
           {[{ key: 'mediaRevenue', title: '認知経路別 売上 TOP3' }, { key: 'categoryRevenue', title: 'イベント分類別 売上 TOP3' }].map(({ key, title }) => (
             <div key={key} className="rounded-lg border border-border bg-card p-4">
@@ -1069,6 +1091,7 @@ export default function AnalyticsPage() {
       )}
 
       {/* タブ集計 */}
+      {view === 'inquiry' && (
       <div>
         <div className="mb-4 overflow-x-auto">
         <div className="flex min-w-max gap-1 rounded-lg border border-border bg-muted/20 p-1">
@@ -1125,6 +1148,7 @@ export default function AnalyticsPage() {
         {tab === 'lead-time'        && <LeadTimeTab />}
         {tab === 'food-plans'        && <FoodPlansTab />}
       </div>
+      )}
     </div>
   )
 }
