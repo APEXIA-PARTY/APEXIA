@@ -69,7 +69,7 @@ export async function EventMonthSummary({ supabase, year, month }: EventMonthSum
 
       {/* KPI: PC=横4列 / スマホ=2列×2段 */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <KpiCard label="開催希望案件" value={`${currentTotal}件`} />
+        <KpiCard label="開催案件数" value={`${currentTotal}件`} />
         <KpiCard label="前年同月" value={`${previousTotal}件`} />
         <KpiCard label="前年比" value={formatEventMonthYoYPercent(currentTotal, previousTotal)} />
         <KpiCard label="前年差" value={formatEventMonthYoYDiff(currentTotal, previousTotal)} />
