@@ -3,6 +3,10 @@
     {
       "path": "/api/auto-cancel",
       "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/auto-complete",
+      "schedule": "10 15 * * *"
     }
   ]
 }
