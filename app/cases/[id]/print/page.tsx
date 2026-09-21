@@ -45,7 +45,7 @@ export default async function PrintPage({
   if (error || !c) notFound()
 
   const equipment = ((c.case_options as any[]) ?? []).filter(o => o.category === 'equipment')
-  const machines  = ['音響', '照明', '映像'].map(cat => ({
+  const machines  = ['音響', '照明', '映像', 'その他オペ'].map(cat => ({
     cat,
     items: ((c.case_options as any[]) ?? []).filter(o => o.category === 'machine' && o.machine_category === cat),
   }))

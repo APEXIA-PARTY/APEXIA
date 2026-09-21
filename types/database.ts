@@ -25,7 +25,7 @@ export type CaseStatus =
 export type UserRole = 'admin' | 'staff' | 'viewer'
 
 export type OptionCategory = 'equipment' | 'machine'
-export type MachineCategory = '音響' | '照明' | '映像'
+export type MachineCategory = '音響' | '照明' | '映像' | 'その他オペ'
 
 export type ApplicationFormStatus = '未対応' | '済み'
 export type DeliveryNoticeStatus = '未対応' | '済み'

@@ -9,7 +9,7 @@ const optionItemSchema = z.object({
   option_id:        z.string().uuid().nullable().optional(),
   name:             z.string().min(1, '名称は必須です').max(200),
   category:         z.enum(['equipment', 'machine']),
-  machine_category: z.enum(['音響', '照明', '映像']).nullable().optional(),
+  machine_category: z.enum(['音響', '照明', '映像', 'その他オペ']).nullable().optional(),
   qty:              z.number().int().min(1).default(1),
   unit_price:       z.number().int().min(0).default(0),
   unit:             z.string().max(20).default('式'),

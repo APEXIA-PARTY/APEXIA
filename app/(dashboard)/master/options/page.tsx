@@ -17,15 +17,15 @@ import { cn } from '@/lib/utils/cn'
 
 type OptionItem = MasterItem & {
   category: 'equipment' | 'machine'
-  machine_category: '音響' | '照明' | '映像' | null
+  machine_category: '音響' | '照明' | '映像' | 'その他オペ' | null
   default_price: number
   unit: string
 }
 
-type MachineTab = '全て' | '音響' | '照明' | '映像'
+type MachineTab = '全て' | '音響' | '照明' | '映像' | 'その他オペ'
 type MainTab = 'equipment' | 'machine'
 
-const MACHINE_TABS: MachineTab[] = ['全て', '音響', '照明', '映像']
+const MACHINE_TABS: MachineTab[] = ['全て', '音響', '照明', '映像', 'その他オペ']
 
 const CATEGORY_LABEL: Record<MainTab, string> = {
   equipment: '備品・設備',
@@ -124,6 +124,7 @@ export default function OptionsPage() {
         { value: '音響', label: '音響' },
         { value: '照明', label: '照明' },
         { value: '映像', label: '映像' },
+        { value: 'その他オペ', label: 'その他オペ' },
       ],
     },
     { name: 'name',          label: '名称',   type: 'text'   as const, required: true, placeholder: 'プロジェクター' },

@@ -128,4 +128,4 @@ export const OPTION_STATE_OPTIONS = ['未確認', '質問中', '検討中', '確
 /**
  * 機材カテゴリ
  */
-export const MACHINE_CATEGORIES = ['音響', '照明', '映像'] as const
+export const MACHINE_CATEGORIES = ['音響', '照明', '映像', 'その他オペ'] as const

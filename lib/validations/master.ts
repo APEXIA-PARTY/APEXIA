@@ -45,7 +45,7 @@ export type CancelReasonFormValues = z.infer<typeof cancelReasonSchema>
 export const optionSchema = z.object({
   ...baseSchema,
   category:         z.enum(['equipment', 'machine']),
-  machine_category: z.enum(['音響', '照明', '映像']).nullable().optional(),
+  machine_category: z.enum(['音響', '照明', '映像', 'その他オペ']).nullable().optional(),
   default_price:    z.number().int().min(0).default(0),
   unit:             z.string().min(1).max(20).default('式'),
 }).refine(

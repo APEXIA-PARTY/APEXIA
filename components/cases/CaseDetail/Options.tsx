@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils/cn'
 
 type OptionState = '未確認' | '質問中' | '検討中' | '確定' | '不要'
 const OPTION_STATES: OptionState[] = ['未確認', '質問中', '検討中', '確定', '不要']
-const MACHINE_CATS = ['音響', '照明', '映像'] as const
+const MACHINE_CATS = ['音響', '照明', '映像', 'その他オペ'] as const
 const TAX_RATE = 1.1
 
 const STATE_STYLE: Record<OptionState, string> = {
