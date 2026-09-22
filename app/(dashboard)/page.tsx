@@ -148,7 +148,7 @@ export default async function DashboardPage() {
       {/* KPIカード（年間） */}
       <div>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">当月KPI（{format(now, 'M')}月）</p>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-12">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
 
   <KpiCard label="問合せ" value={mk.inquiry} icon={Users} color="blue" />
   <KpiCard label="下見" value={mk.preview} icon={Calendar} color="purple" />
@@ -202,9 +202,9 @@ export default async function DashboardPage() {
         <div className="flex h-5 w-full items-center justify-center gap-[2px] whitespace-nowrap">
           {(m.inquiry > 0 || m.confirmed > 0) && (
             <>
-              <span className="text-[9px] font-medium text-blue-400">{m.inquiry}</span>
-              <span className="text-[9px] text-gray-400">:</span>
-              <span className="text-[9px] font-bold text-primary">{m.confirmed}</span>
+              <span className="text-[9px] xl:text-xs font-medium text-blue-400">{m.inquiry}</span>
+              <span className="text-[9px] xl:text-xs text-gray-400">:</span>
+              <span className="text-[9px] xl:text-xs font-bold text-primary">{m.confirmed}</span>
             </>
           )}
         </div>
@@ -226,7 +226,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* 月ラベル */}
-        <span className="mt-0.5 text-[10px] text-muted-foreground">{m.label}</span>
+        <span className="mt-0.5 text-[10px] xl:text-xs text-muted-foreground">{m.label}</span>
 
       </div>
     ))}
