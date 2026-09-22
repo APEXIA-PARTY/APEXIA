@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { TrendingUp, BarChart2, Users, Calendar, XCircle, DollarSign } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { EventYearlyAnalysis } from '@/components/analytics/EventYearlyAnalysis'
+import { formatCurrencyShort } from '@/lib/utils/format'
 
 // ─── フォーマットユーティリティ ────────────────────────────────
 const fmtYen  = (v: number) => v >= 10000 ? `¥${Math.round(v / 10000)}万` : `¥${v.toLocaleString()}`
@@ -769,7 +770,7 @@ function OptionsTab() {
                 <tr key={r.id} className="hover:bg-muted/20">
                   <TD>{r.name}{r.machine_category && <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 text-xs">{r.machine_category}</span>}</TD>
                   <TD right bold>{r.useCount}</TD>
-                  <TD right color="text-green-700">{r.revenue > 0 ? fmtYen(r.revenue) : '—'}</TD>
+                  <TD right color="text-green-700">{r.revenue > 0 ? formatCurrencyShort(r.revenue) : '—'}</TD>
                 </tr>
               ))}
             </tbody>
@@ -1060,10 +1061,10 @@ export default function AnalyticsPage() {
             <KPI label="確定"        value={fmtNum(yk.confirmed)}                           icon={TrendingUp}  color="text-green-700" />
             <KPI label="下見前ｷｬﾝ"  value={fmtNum(yk.cancelBeforePreview)}                 icon={XCircle}     color="text-red-400" />
             <KPI label="下見後ｷｬﾝ"  value={fmtNum(yk.cancelAfterPreview)}                  icon={XCircle}     color="text-red-600" />
-            <KPI label="確定売上"    value={fmtYen(yk.revenue)}                             icon={DollarSign}  color="text-green-700" />
-            <KPI label="平均単価"    value={yk.avgPrice > 0 ? fmtYen(yk.avgPrice) : '—'}   icon={BarChart2}   color="text-blue-600" />
+            <KPI label="確定売上"    value={formatCurrencyShort(yk.revenue)}                        icon={DollarSign}  color="text-green-700" />
+            <KPI label="平均単価"    value={yk.avgPrice > 0 ? formatCurrencyShort(yk.avgPrice) : '—'} icon={BarChart2} color="text-blue-600" />
             <KPI label="→確定率"    value={fmtPct(yk.cvRate)}                              icon={TrendingUp}  color="text-orange-600" />
-            <KPI label="見積合計"    value={fmtYen(yk.estimateTotal)}                       icon={DollarSign}  color="text-green-700" />
+            <KPI label="見積合計"    value={formatCurrencyShort(yk.estimateTotal)}                  icon={DollarSign}  color="text-green-700" />
             <KPI label="自動ｷｬﾝ累計" value={fmtNum(summary?.kpi?.thisMonth?.autoCancelTotal ?? 0)} icon={XCircle} color="text-red-800" />
           </div>
         </div>
