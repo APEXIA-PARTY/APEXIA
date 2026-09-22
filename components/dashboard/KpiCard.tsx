@@ -26,7 +26,7 @@ export function KpiCard({ label, value, sub, icon: Icon, color = 'default', clas
         <p className="text-xs text-muted-foreground">{label}</p>
         {Icon && <Icon className={cn('h-4 w-4 shrink-0', COLOR_MAP[color])} />}
       </div>
-      <p className={cn('mt-2 text-2xl font-bold tabular-nums', COLOR_MAP[color])}>
+      <p className={cn('mt-2 text-xl font-bold tabular-nums whitespace-nowrap', COLOR_MAP[color])}>
         {value}
       </p>
       {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
