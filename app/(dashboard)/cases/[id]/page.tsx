@@ -13,6 +13,7 @@ import { CaseFoodPlansSection } from '@/components/cases/CaseDetail/FoodPlans'
 import { CaseChecklistSection } from '@/components/cases/CaseDetail/Checklist'
 import { CaseFilesSection } from '@/components/cases/CaseDetail/Files'
 import { CaseHoldLogSection } from '@/components/cases/CaseDetail/HoldLog'
+import { StatusBadge } from '@/components/cases/StatusBadge'
 import { formatDate, formatCurrency } from '@/lib/utils/format'
 import { CaseStatus } from '@/types/database'
 import { GCalButton } from '@/components/cases/CaseDetail/GCalButton'
@@ -116,9 +117,7 @@ export default async function CaseDetailPage({ params }: { params: { id: string 
         ) : (
           <div className="flex items-center gap-2">
             {/* viewer は変更ボタンなし、表示のみ */}
-            <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold`}>
-              {c.status}
-            </span>
+            <StatusBadge status={c.status as CaseStatus} autoCancel={c.auto_cancel} />
           </div>
         )}
         {c.estimate_amount > 0 && (
