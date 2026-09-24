@@ -1054,7 +1054,7 @@ export default function AnalyticsPage() {
       {view === 'inquiry' && yk && (
         <div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">年間KPI（{new Date().getFullYear()}年）</p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-11">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
             <KPI label="問合せ"      value={fmtNum(yk.inquiry)}                             icon={Users}       color="text-blue-600" />
             <KPI label="下見"        value={fmtNum(yk.preview)}                             icon={Calendar}    color="text-purple-600" />
             <KPI label="→下見率"    value={fmtPct(yk.previewRate)}                         icon={TrendingUp}  color="text-purple-600" />
