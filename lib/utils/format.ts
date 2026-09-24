@@ -63,7 +63,8 @@ export function formatCurrencyShort(amount: number | null | undefined): string {
   if (amount === null || amount === undefined) return '—'
   if (amount >= 10000) {
     const man = amount / 10000
-    return `${man % 1 === 0 ? man : man.toFixed(1)}万円`
+    const manStr = man.toFixed(1)
+    return `${manStr.endsWith('.0') ? manStr.slice(0, -2) : manStr}万円`
   }
   return `${amount.toLocaleString('ja-JP')}円`
 }
