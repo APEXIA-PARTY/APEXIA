@@ -5,7 +5,7 @@
  */
 import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
-import { calcMediaMonthly, UNASSIGNED_MEDIA_ID, UNASSIGNED_MEDIA_LABEL, type CaseRow } from './analytics.ts'
+import { calcMediaMonthly, calcKpi, filterRevenueStatuses, REVENUE_STATUSES, UNASSIGNED_MEDIA_ID, UNASSIGNED_MEDIA_LABEL, type CaseRow } from './analytics.ts'
 
 // テスト用の最小限のダミー案件を作るヘルパー
 function makeCase(overrides: Partial<CaseRow>): CaseRow {
@@ -140,5 +140,35 @@ describe('calcMediaMonthly', () => {
     const rowB = result.find((r) => r.id === 'media-b')!
     assert.equal(rowA.months[5].inquiry, 1)
     assert.equal(rowB.months[5].inquiry, 2)
+  })
+})
+
+// REVENUE_STATUSES は /api/analytics/options が対象案件を絞り込む際にも使用される。
+// 「確定のみ」への変更を誤って混入させないための回帰テスト。
+describe('REVENUE_STATUSES（オプション分析・確定売上集計の対象ステータス）', () => {
+  test('confirmed と done の2つのみが対象である', () => {
+    assert.deepEqual(REVENUE_STATUSES, ['confirmed', 'done'])
+  })
+
+  test('calcKpi の confirmed件数・revenueは confirmed と done の両方を含み、それ以外のステータスは含まない', () => {
+    const cases = [
+      makeCase({ id: 'c1', status: 'confirmed', estimate_amount: 100000 }),
+      makeCase({ id: 'c2', status: 'done', estimate_amount: 50000 }),
+      makeCase({ id: 'c3', status: 'tentative', estimate_amount: 999999 }),
+      makeCase({ id: 'c4', status: 'cancelled', estimate_amount: 999999 }),
+    ]
+    const kpi = calcKpi(cases)
+    assert.equal(kpi.confirmed, 2)
+    assert.equal(kpi.revenue, 150000)
+  })
+
+  test('filterRevenueStatuses は確定と開催終了だけを残す', () => {
+    const rows = [
+      makeCase({ id: 'confirmed', status: 'confirmed' }),
+      makeCase({ id: 'done', status: 'done' }),
+      makeCase({ id: 'tentative', status: 'tentative' }),
+      makeCase({ id: 'cancelled', status: 'cancelled' }),
+    ]
+    assert.deepEqual(filterRevenueStatuses(rows).map((row) => row.id), ['confirmed', 'done'])
   })
 })

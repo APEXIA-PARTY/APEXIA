@@ -1127,10 +1127,8 @@ export default function AnalyticsPage() {
         )}
         {tab === 'event-categories' && <EventCategoriesTab />}
         {tab === 'floors'           && <GenericMasterTab apiPath="/api/analytics/floors" label="フロア" columns={[
-          { key: 'inquiry', label: '問合せ', right: true, fmt: fmtNum },
+          { key: 'inquiry', label: '確定＋開催終了', right: true, fmt: fmtNum },
           { key: 'inquiryShare', label: '割合', right: true, fmt: fmtPct },
-          { key: 'confirmed', label: '確定', right: true, fmt: fmtNum, color: 'text-green-700' },
-          { key: 'confirmShare', label: '確定割合', right: true, fmt: fmtPct },
           { key: 'revenue', label: '確定売上', right: true, fmt: (v: number) => v > 0 ? fmtYen(v) : '—', color: 'text-green-700' },
           { key: 'avgPrice', label: '平均単価', right: true, fmt: (v: number) => v > 0 ? fmtYen(v) : '—' },
         ]} />}

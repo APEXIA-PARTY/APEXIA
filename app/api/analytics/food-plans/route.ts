@@ -8,6 +8,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth/helpers'
+import { REVENUE_STATUSES, type CaseRow } from '@/lib/utils/analytics'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,19 +18,30 @@ export async function GET() {
 
   const supabase = await createClient()
 
-  const { data, error: dbError } = await supabase
-    .from('case_food_plans')
-    .select('name, qty, unit_price, amount, state')
-    .neq('state', '不要')
+  const [{ data: foodPlans, error: foodPlansError }, { data: cases, error: casesError }] = await Promise.all([
+    supabase
+      .from('case_food_plans')
+      .select('case_id, name, qty, unit_price, amount, state')
+      .neq('state', '不要'),
+    supabase
+      .from('cases')
+      .select('id, status')
+      .in('status', REVENUE_STATUSES),
+  ])
 
-  if (dbError) {
-    console.error(dbError)
+  if (foodPlansError || casesError) {
+    console.error(foodPlansError ?? casesError)
     return NextResponse.json({ message: 'データ取得失敗' }, { status: 500 })
   }
 
+  const eligibleCaseIds = new Set(
+    ((cases ?? []) as Pick<CaseRow, 'id' | 'status'>[]).map((c) => c.id)
+  )
+
   // name ごとに件数・金額合計を集計
   const aggMap: Record<string, { count: number; total_amount: number }> = {}
-  for (const row of (data ?? [])) {
+  for (const row of (foodPlans ?? [])) {
+    if (!eligibleCaseIds.has(row.case_id)) continue
     const name = row.name
     if (!name) continue
     if (!aggMap[name]) aggMap[name] = { count: 0, total_amount: 0 }

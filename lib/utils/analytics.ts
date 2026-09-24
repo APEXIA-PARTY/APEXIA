@@ -9,6 +9,11 @@ import type { CaseStatus } from '@/types/database'
 /** 売上集計対象ステータス */
 export const REVENUE_STATUSES: CaseStatus[] = ['confirmed', 'done']
 
+/** 売上集計の対象（確定・開催終了）の案件だけを残す */
+export function filterRevenueStatuses<T extends { status: CaseStatus }>(rows: T[]): T[] {
+  return rows.filter((row) => REVENUE_STATUSES.includes(row.status))
+}
+
 /** 下見以上のステータス（旧ロジック用定数。互換のため残すが、calcKpi では使用しない） */
 export const PREVIEWED_STATUSES: CaseStatus[] = ['previewed', 'tentative', 'confirmed', 'done']
 
