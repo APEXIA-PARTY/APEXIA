@@ -8,7 +8,7 @@
  */
 import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
-import { formatCurrencyShort } from './format.ts'
+import { formatCurrencyShort, formatYenShort } from './format.ts'
 
 describe('formatCurrencyShort', () => {
   test('null / undefined → —', () => {
@@ -54,5 +54,50 @@ describe('formatCurrencyShort', () => {
     assert.equal(formatCurrencyShort(14950), '1.5万円')
     assert.equal(formatCurrencyShort(123724999), '12372.5万円')
     assert.equal(formatCurrencyShort(123725000), '12372.5万円')
+  })
+})
+
+describe('formatYenShort', () => {
+  test('null / undefined → —', () => {
+    assert.equal(formatYenShort(null), '—')
+    assert.equal(formatYenShort(undefined), '—')
+  })
+
+  test('0 → ¥0', () => {
+    assert.equal(formatYenShort(0), '¥0')
+  })
+
+  test('1万円未満は ¥ + カンマ区切り', () => {
+    assert.equal(formatYenShort(8000), '¥8,000')
+    assert.equal(formatYenShort(9999), '¥9,999')
+  })
+
+  test('整数万円は .0 を付けない', () => {
+    assert.equal(formatYenShort(10000), '¥1万')
+    assert.equal(formatYenShort(1310000), '¥131万')
+    assert.equal(formatYenShort(10000000), '¥1000万')
+  })
+
+  test('丸めて整数になる場合も .0 を付けない', () => {
+    assert.equal(formatYenShort(10001), '¥1万')
+    assert.equal(formatYenShort(99999), '¥10万')
+    assert.equal(formatYenShort(9999999), '¥1000万')
+  })
+
+  test('必要な小数第1位は残る（整数万円へ丸めない）', () => {
+    assert.equal(formatYenShort(14999), '¥1.5万')
+    assert.equal(formatYenShort(15000), '¥1.5万')
+    assert.equal(formatYenShort(1018000), '¥101.8万')
+    assert.equal(formatYenShort(1124000), '¥112.4万')
+    assert.equal(formatYenShort(7041000), '¥704.1万')
+    assert.equal(formatYenShort(40324900), '¥4032.5万')
+    assert.equal(formatYenShort(89564900), '¥8956.5万')
+    assert.equal(formatYenShort(126459000), '¥12645.9万')
+  })
+
+  test('formatCurrencyShort と同じ丸め精度（万円換算・小数第1位）', () => {
+    for (const v of [10001, 14999, 99999, 1018000, 40324900, 89564900, 126459000, 9999999]) {
+      assert.equal(formatYenShort(v), '¥' + formatCurrencyShort(v).replace('万円', '万'))
+    }
   })
 })

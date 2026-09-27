@@ -70,6 +70,19 @@ export function formatCurrencyShort(amount: number | null | undefined): string {
 }
 
 /**
+ * 金額を ¥ + 万 表記にフォーマット（小数第1位まで、整数になる場合は .0 を省略）
+ * 例: 40324900 → ¥4032.5万 / 8000 → ¥8,000
+ */
+export function formatYenShort(amount: number | null | undefined): string {
+  if (amount === null || amount === undefined) return '—'
+  if (amount >= 10000) {
+    const manStr = (amount / 10000).toFixed(1)
+    return `¥${manStr.endsWith('.0') ? manStr.slice(0, -2) : manStr}万`
+  }
+  return `¥${amount.toLocaleString('ja-JP')}`
+}
+
+/**
  * 数値をパーセント表示にフォーマット
  * 例: 0.456 → 45.6%
  */
