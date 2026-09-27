@@ -82,7 +82,7 @@ export function EventYearlyAnalysis() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        ※ステータスを問わず、開催日が登録された全案件を含みます（キャンセル・開催終了を含む）。
+        ※開催日が登録されている案件を、開催月ごとに集計しています。ステータスを問わず、キャンセル・開催終了を含みます。
       </p>
 
       {showTimingNote && (
@@ -109,14 +109,14 @@ export function EventYearlyAnalysis() {
         }))
 
         // 未来年選択時のみ「開催予定案件数」に表示ラベルを変える（集計値・ロジックは変更しない）
-        const kpiLabel = Number(year) > currentYearNum ? '開催予定案件数' : '開催案件数'
+        const kpiLabel = Number(year) > currentYearNum ? '開催予定案件数' : '開催月別 問合せ件数'
 
         return (
           <>
             {/* KPI: PC=横4列 / スマホ=2列×2段 */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <KpiCard label={kpiLabel} value={`${currentTotal}件`} />
-              <KpiCard label="前年開催案件数" value={`${previousTotal}件`} />
+              <KpiCard label="前年同条件 問合せ件数" value={`${previousTotal}件`} />
               <KpiCard label="前年比" value={formatEventMonthYoYPercent(currentTotal, previousTotal)} />
               <KpiCard label="前年差" value={formatEventMonthYoYDiff(currentTotal, previousTotal)} />
             </div>
@@ -124,7 +124,7 @@ export function EventYearlyAnalysis() {
             {/* 月別推移グラフ（2系列折れ線） */}
             <div className="rounded-lg border border-border bg-card p-4">
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-sm font-semibold">開催案件数 月別推移</span>
+                <span className="text-sm font-semibold">開催月別 問合せ件数推移</span>
                 <div className="flex gap-3 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <span className="inline-block h-2 w-3 rounded bg-blue-200" />{previousYear}年
