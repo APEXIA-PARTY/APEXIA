@@ -92,6 +92,8 @@ export const AUTO_CANCEL_TARGET_STATUSES: CaseStatus[] = [
 export const FORM_STATUS_OPTIONS = ['未対応', '済み'] as const
 /** 申込み金（deposit_status）のみ 3 値（保存値は表示ラベルと同じ文字列。DB の CHECK 制約も同じ値） */
 export const DEPOSIT_STATUS_OPTIONS = ['未対応', '請求書送付済み', '済み'] as const
+/** 残額支払い（remaining_payment_status）も 3 値（保存値は表示ラベルと同じ文字列。DB の CHECK 制約も同じ値） */
+export const REMAINING_PAYMENT_STATUS_OPTIONS = ['未対応', '請求書送付済み', '済み'] as const
 export const DELIVERY_STATUS_OPTIONS = ['未対応', '済み'] as const
 export const INVOICE_STATUS_OPTIONS = ['未対応', '発行依頼', '送付済み', '振り込み済み'] as const
 export const PAYMENT_METHOD_OPTIONS = [

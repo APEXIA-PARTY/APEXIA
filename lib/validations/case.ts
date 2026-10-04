@@ -114,7 +114,7 @@ export const caseFormSchema = z.object({
   application_form_status: z.enum(['未対応', '済み']).optional().default('未対応'),
   delivery_notice_status: z.enum(['未対応', '済み']).optional().default('未対応'),
   deposit_status: z.enum(['未対応', '請求書送付済み', '済み']).optional().default('未対応'),
-  remaining_payment_status: z.enum(['未対応', '済み']).optional().default('未対応'),
+  remaining_payment_status: z.enum(['未対応', '請求書送付済み', '済み']).optional().default('未対応'),
   event_date_note: emptyToUndefined(z.string().max(500).optional()),
   invoice_status: z
     .enum(['未対応', '発行依頼', '送付済み', '振り込み済み'])

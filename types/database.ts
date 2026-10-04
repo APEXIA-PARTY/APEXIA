@@ -30,7 +30,7 @@ export type MachineCategory = '音響' | '照明' | '映像' | 'その他オペ'
 export type ApplicationFormStatus = '未対応' | '済み'
 export type DeliveryNoticeStatus = '未対応' | '済み'
 export type DepositStatus = '未対応' | '請求書送付済み' | '済み'
-export type RemainingPaymentStatus = '未対応' | '済み'
+export type RemainingPaymentStatus = '未対応' | '請求書送付済み' | '済み'
 export type InvoiceStatus = '未対応' | '発行依頼' | '送付済み' | '振り込み済み'
 export type PaymentMethod = 'キャッシュレス' | '現金' | '現金+キャッシュレス'
 

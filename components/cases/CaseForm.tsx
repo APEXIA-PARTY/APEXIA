@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { caseFormSchema, CaseFormValues } from '@/lib/validations/case'
-import { STATUS_LIST, INVOICE_STATUS_OPTIONS, PAYMENT_METHOD_OPTIONS, DEPOSIT_STATUS_OPTIONS } from '@/lib/constants/status'
+import { STATUS_LIST, INVOICE_STATUS_OPTIONS, PAYMENT_METHOD_OPTIONS, DEPOSIT_STATUS_OPTIONS, REMAINING_PAYMENT_STATUS_OPTIONS } from '@/lib/constants/status'
 import { Case } from '@/types/database'
 import { PreviewDateTimeSelect, MINUTES, HOURS } from '@/components/cases/PreviewDateTimeSelect'
 
@@ -634,8 +634,9 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
           <div>
             <label className={lbl}>残額支払い</label>
             <select {...register('remaining_payment_status')} className={sel}>
-              <option value="未対応">未対応</option>
-              <option value="済み">済み</option>
+              {REMAINING_PAYMENT_STATUS_OPTIONS.map((v) => (
+                <option key={v} value={v}>{v}</option>
+              ))}
             </select>
           </div>
         </div>
