@@ -81,6 +81,29 @@ describe('formatYenFull', () => {
       assert.ok(!formatYenFull(v).includes('万'))
     }
   })
+
+  test('円未満の小数は表示時に円単位へ四捨五入する', () => {
+    assert.equal(formatYenFull(13786990.6), '¥13,786,991')
+    assert.equal(formatYenFull(10408781.222), '¥10,408,781')
+    assert.equal(formatYenFull(93679031), '¥93,679,031')
+  })
+
+  test('四捨五入の境界（.4は切り捨て・.5は切り上げ）', () => {
+    assert.equal(formatYenFull(1000.4), '¥1,000')
+    assert.equal(formatYenFull(1000.5), '¥1,001')
+  })
+
+  test('小数点付きの円表示にならない', () => {
+    for (const v of [13786990.6, 10408781.222, 999.999, 1234567.891]) {
+      assert.ok(!/\.\d/.test(formatYenFull(v)))
+    }
+  })
+
+  test('渡した値そのものは変更しない（表示時のみの丸め）', () => {
+    const v = 13786990.6
+    formatYenFull(v)
+    assert.equal(v, 13786990.6)
+  })
 })
 
 describe('formatManShort', () => {

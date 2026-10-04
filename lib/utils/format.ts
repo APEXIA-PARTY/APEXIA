@@ -70,12 +70,12 @@ export function formatCurrencyShort(amount: number | null | undefined): string {
 }
 
 /**
- * 金額を「¥ + 円単位 + 3桁カンマ」にフォーマット
- * 例: 93679000 → ¥93,679,000 / 8000 → ¥8,000
+ * 金額を「¥ + 円単位 + 3桁カンマ」にフォーマット（表示時のみ円未満を四捨五入。元の値は変更しない）
+ * 例: 93679000 → ¥93,679,000 / 8000 → ¥8,000 / 13786990.6 → ¥13,786,991
  */
 export function formatYenFull(amount: number | null | undefined): string {
   if (amount === null || amount === undefined) return '—'
-  return `¥${amount.toLocaleString('ja-JP')}`
+  return `¥${Math.round(amount).toLocaleString('ja-JP')}`
 }
 
 /**
