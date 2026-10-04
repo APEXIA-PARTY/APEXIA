@@ -17,6 +17,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/auth/helpers'
 import type { ApplyResponse } from '@/types/import'
+import { resolveEventSubcategoryId, type MasterRow, type SubcategoryRow } from '@/lib/import/masterAliases'
 
 interface RouteParams {
   params: { batchId: string }
@@ -112,6 +113,15 @@ export async function POST(req: Request, { params }: RouteParams) {
     return NextResponse.json({ message: 'データの取得に失敗しました' }, { status: 500 })
   }
 
+  // ── 中分類の解決用マスタ（SELECT のみ。取得に失敗しても従来どおり中分類なしで続行）──
+  // 旧大分類「企業飲食」の取込みは、大分類「企業イベント」＋ 中分類「企業飲食」として保存する
+  const [{ data: eventCatMasters }, { data: eventSubMasters }] = await Promise.all([
+    supabase.from('event_category_master').select('id, name').eq('is_active', true),
+    supabase.from('event_subcategory_master').select('id, name, category_id').eq('is_active', true),
+  ])
+  const categoryMasters: MasterRow[] = eventCatMasters ?? []
+  const subcategoryMasters: SubcategoryRow[] = eventSubMasters ?? []
+
   // ── cases へ INSERT（承認行のみ） ─────────────────────────────
   const insertedCaseIds: string[] = []
   let provisionalCompany = 0  // company空→担当者名（仮）で仮反映した件数
@@ -156,6 +166,7 @@ export async function POST(req: Request, { params }: RouteParams) {
         floor_id:               row.floor_id,
         media_id:               row.media_id,
         event_category_id:      row.event_category_id,
+        event_subcategory_id:   resolveEventSubcategoryId(row.event_category_raw, row.event_category_id, categoryMasters, subcategoryMasters),
         contact_method_id:      row.contact_method_id,
         cancel_reason_id:       row.cancel_reason_id,
         start_time:             row.start_time,

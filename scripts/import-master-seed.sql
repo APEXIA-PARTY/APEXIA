@@ -5,19 +5,19 @@
 -- 対象: media_master / contact_method_master / cancel_reason_master
 -- ============================================================
 
--- ─── media_master (5件) ───────────────────────────────────────
+-- 注: マスタ名称は統合済み（認知経路 / キャンセル理由）。旧名称は再作成しない。
+--   WEBで要件入力・web要件検索 → WEB要件検索 / insragram営業・instagramのDM → instagram DM営業
+--   他会場に決定・他店舗で開催 → 他会場で開催 / 空いてなかった → 空き枠なし
+
+-- ─── media_master (4件) ───────────────────────────────────────
 
 INSERT INTO media_master (name, display_order, is_active, created_at, updated_at)
-SELECT 'WEBで要件入力', (SELECT COALESCE(MAX(display_order), 0) + 1 FROM media_master), true, now(), now()
-WHERE NOT EXISTS (SELECT 1 FROM media_master WHERE lower(trim(name)) = 'webで要件入力');
+SELECT 'WEB要件検索', (SELECT COALESCE(MAX(display_order), 0) + 1 FROM media_master), true, now(), now()
+WHERE NOT EXISTS (SELECT 1 FROM media_master WHERE lower(trim(name)) = 'web要件検索');
 
 INSERT INTO media_master (name, display_order, is_active, created_at, updated_at)
 SELECT 'ぐるなび（HP記載あり）', (SELECT COALESCE(MAX(display_order), 0) + 1 FROM media_master), true, now(), now()
 WHERE NOT EXISTS (SELECT 1 FROM media_master WHERE lower(trim(name)) = 'ぐるなび（hp記載あり）');
-
-INSERT INTO media_master (name, display_order, is_active, created_at, updated_at)
-SELECT 'instagramのDM', (SELECT COALESCE(MAX(display_order), 0) + 1 FROM media_master), true, now(), now()
-WHERE NOT EXISTS (SELECT 1 FROM media_master WHERE lower(trim(name)) = 'instagramのdm');
 
 INSERT INTO media_master (name, display_order, is_active, created_at, updated_at)
 SELECT 'どの媒体か不明', (SELECT COALESCE(MAX(display_order), 0) + 1 FROM media_master), true, now(), now()
@@ -49,12 +49,12 @@ SELECT '先方都合', false, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM c
 WHERE NOT EXISTS (SELECT 1 FROM cancel_reason_master WHERE lower(trim(name)) = '先方都合');
 
 INSERT INTO cancel_reason_master (name, is_auto_cancel, display_order, is_active, created_at, updated_at)
-SELECT '他店舗で開催', false, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM cancel_reason_master), true, now(), now()
-WHERE NOT EXISTS (SELECT 1 FROM cancel_reason_master WHERE lower(trim(name)) = '他店舗で開催');
+SELECT '他会場で開催', false, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM cancel_reason_master), true, now(), now()
+WHERE NOT EXISTS (SELECT 1 FROM cancel_reason_master WHERE lower(trim(name)) = '他会場で開催');
 
 INSERT INTO cancel_reason_master (name, is_auto_cancel, display_order, is_active, created_at, updated_at)
-SELECT '空いてなかった', false, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM cancel_reason_master), true, now(), now()
-WHERE NOT EXISTS (SELECT 1 FROM cancel_reason_master WHERE lower(trim(name)) = '空いてなかった');
+SELECT '空き枠なし', false, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM cancel_reason_master), true, now(), now()
+WHERE NOT EXISTS (SELECT 1 FROM cancel_reason_master WHERE lower(trim(name)) = '空き枠なし');
 
 INSERT INTO cancel_reason_master (name, is_auto_cancel, display_order, is_active, created_at, updated_at)
 SELECT '内容により、お断り', false, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM cancel_reason_master), true, now(), now()

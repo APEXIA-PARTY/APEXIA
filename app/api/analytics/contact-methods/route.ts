@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
   const [{ data: masters }, { data: cases }] = await Promise.all([
     supabase.from('contact_method_master').select('id,name').eq('is_active', true).order('display_order'),
-    supabase.from('cases').select('id,status,auto_cancel,estimate_amount,inquiry_date,company,contact_method_id,cancel_reason_id'),
+    supabase.from('cases').select('id,status,auto_cancel,preview_datetime,estimate_amount,inquiry_date,company,contact_method_id,cancel_reason_id'),
   ])
 
   if (!cases) return NextResponse.json({ message: 'データ取得に失敗しました' }, { status: 500 })

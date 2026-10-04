@@ -48,9 +48,9 @@ INSERT INTO media_master (name, display_order) VALUES
   ('ChatGPT',                    32),
   ('媒体不明',                   33),
   ('店舗名検索',                 34),
-  ('web要件検索',                35),
+  ('WEB要件検索',                35),
   ('ジーカンズ（渋谷）',         36),
-  ('insragram営業',              37),
+  ('instagram DM営業',           37),
   ('mail営業',                   38),
   ('ロケグー',                   39),
   ('営業（問合せフォーム）',     40)
@@ -80,7 +80,7 @@ ON CONFLICT DO NOTHING;
 INSERT INTO cancel_reason_master (name, is_auto_cancel, display_order) VALUES
   ('連絡不通',     true,  1),  -- ← 自動キャンセル専用（名称変更NG）
   ('予算合わず',   false, 2),
-  ('他会場に決定', false, 3),
+  ('他会場で開催', false, 3),
   ('日程変更',     false, 4),
   ('その他',       false, 5)
 ON CONFLICT DO NOTHING;

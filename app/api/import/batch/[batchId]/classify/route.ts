@@ -16,19 +16,20 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/auth/helpers'
 import type { ClassifyResponse, StagingClassification } from '@/types/import'
+import {
+  resolveMasterId,
+  MEDIA_ALIASES,
+  CANCEL_REASON_ALIASES,
+  EVENT_CATEGORY_ALIASES,
+  type MasterRow,
+} from '@/lib/import/masterAliases'
 
 interface RouteParams {
   params: { batchId: string }
 }
 
-interface MasterRow { id: string; name: string }
-
-/** マスター名から ID を解決（大文字小文字無視・前後空白除去） */
-function resolveId(raw: string | null, masters: MasterRow[]): string | null {
-  if (!raw || !raw.trim()) return null
-  const normalized = raw.trim().toLowerCase()
-  return masters.find(m => m.name.trim().toLowerCase() === normalized)?.id ?? null
-}
+/** マスター名から ID を解決（大文字小文字無視・前後空白除去。旧名称は別名表で正規名称へ読み替え） */
+const resolveId = resolveMasterId
 
 export async function POST(_req: Request, { params }: RouteParams) {
   const { batchId } = params
@@ -118,10 +119,10 @@ export async function POST(_req: Request, { params }: RouteParams) {
 
   const updates = stagingRows.map(row => {
     const floor_id            = resolveId(row.floor_raw,          floorMasters)
-    const media_id            = resolveId(row.media_raw,          mediaMasters)
-    const event_category_id   = resolveId(row.event_category_raw, eventCatMasters)
+    const media_id            = resolveId(row.media_raw,          mediaMasters, MEDIA_ALIASES)
+    const event_category_id   = resolveId(row.event_category_raw, eventCatMasters, EVENT_CATEGORY_ALIASES)
     const contact_method_id   = resolveId(row.contact_method_raw, contactMasters)
-    const cancel_reason_id    = resolveId(row.cancel_reason_raw,  cancelMasters)
+    const cancel_reason_id    = resolveId(row.cancel_reason_raw,  cancelMasters, CANCEL_REASON_ALIASES)
 
     // 重複チェック（company + event_date 両方ある行のみ）
     const key = row.company && row.event_date
