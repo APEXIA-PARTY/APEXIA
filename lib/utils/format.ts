@@ -70,16 +70,24 @@ export function formatCurrencyShort(amount: number | null | undefined): string {
 }
 
 /**
- * 金額を ¥ + 万 表記にフォーマット（小数第1位まで、整数になる場合は .0 を省略）
- * 例: 40324900 → ¥4032.5万 / 8000 → ¥8,000
+ * 金額を「¥ + 円単位 + 3桁カンマ」にフォーマット
+ * 例: 93679000 → ¥93,679,000 / 8000 → ¥8,000
  */
-export function formatYenShort(amount: number | null | undefined): string {
+export function formatYenFull(amount: number | null | undefined): string {
   if (amount === null || amount === undefined) return '—'
-  if (amount >= 10000) {
-    const manStr = (amount / 10000).toFixed(1)
-    return `¥${manStr.endsWith('.0') ? manStr.slice(0, -2) : manStr}万`
-  }
   return `¥${amount.toLocaleString('ja-JP')}`
+}
+
+/**
+ * 金額を万表記（¥なし・3桁カンマ・小数第1位まで、整数になる場合は .0 を省略）にフォーマット
+ * 1万円未満は formatYenFull にフォールバック
+ * 例: 93679000 → 9,367.9万 / 137870000 → 13,787万 / 8000 → ¥8,000
+ */
+export function formatManShort(amount: number | null | undefined): string {
+  if (amount === null || amount === undefined) return '—'
+  if (amount < 10000) return formatYenFull(amount)
+  const man = Number((amount / 10000).toFixed(1))
+  return `${man.toLocaleString('ja-JP', { maximumFractionDigits: 1 })}万`
 }
 
 /**

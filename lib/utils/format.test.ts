@@ -8,7 +8,7 @@
  */
 import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
-import { formatCurrencyShort, formatYenShort } from './format.ts'
+import { formatCurrencyShort, formatYenFull, formatManShort } from './format.ts'
 
 describe('formatCurrencyShort', () => {
   test('null / undefined → —', () => {
@@ -57,47 +57,74 @@ describe('formatCurrencyShort', () => {
   })
 })
 
-describe('formatYenShort', () => {
+describe('formatYenFull', () => {
   test('null / undefined → —', () => {
-    assert.equal(formatYenShort(null), '—')
-    assert.equal(formatYenShort(undefined), '—')
+    assert.equal(formatYenFull(null), '—')
+    assert.equal(formatYenFull(undefined), '—')
   })
 
   test('0 → ¥0', () => {
-    assert.equal(formatYenShort(0), '¥0')
+    assert.equal(formatYenFull(0), '¥0')
   })
 
-  test('1万円未満は ¥ + カンマ区切り', () => {
-    assert.equal(formatYenShort(8000), '¥8,000')
-    assert.equal(formatYenShort(9999), '¥9,999')
+  test('円単位 + 3桁カンマ区切り', () => {
+    assert.equal(formatYenFull(8000), '¥8,000')
+    assert.equal(formatYenFull(9999), '¥9,999')
+    assert.equal(formatYenFull(10000), '¥10,000')
+    assert.equal(formatYenFull(1018000), '¥1,018,000')
+    assert.equal(formatYenFull(93679000), '¥93,679,000')
+    assert.equal(formatYenFull(137870000), '¥137,870,000')
+  })
+
+  test('「万」を含まない（¥と万の併用をしない）', () => {
+    for (const v of [0, 8000, 10000, 1018000, 93679000, 137870000]) {
+      assert.ok(!formatYenFull(v).includes('万'))
+    }
+  })
+})
+
+describe('formatManShort', () => {
+  test('null / undefined → —', () => {
+    assert.equal(formatManShort(null), '—')
+    assert.equal(formatManShort(undefined), '—')
+  })
+
+  test('1万円未満は formatYenFull にフォールバック', () => {
+    assert.equal(formatManShort(0), '¥0')
+    assert.equal(formatManShort(8000), '¥8,000')
+    assert.equal(formatManShort(9999), '¥9,999')
   })
 
   test('整数万円は .0 を付けない', () => {
-    assert.equal(formatYenShort(10000), '¥1万')
-    assert.equal(formatYenShort(1310000), '¥131万')
-    assert.equal(formatYenShort(10000000), '¥1000万')
+    assert.equal(formatManShort(10000), '1万')
+    assert.equal(formatManShort(137870000), '13,787万')
+    assert.equal(formatManShort(10000000), '1,000万')
   })
 
   test('丸めて整数になる場合も .0 を付けない', () => {
-    assert.equal(formatYenShort(10001), '¥1万')
-    assert.equal(formatYenShort(99999), '¥10万')
-    assert.equal(formatYenShort(9999999), '¥1000万')
+    assert.equal(formatManShort(10001), '1万')
+    assert.equal(formatManShort(99999), '10万')
+    assert.equal(formatManShort(9999999), '1,000万')
   })
 
-  test('必要な小数第1位は残る（整数万円へ丸めない）', () => {
-    assert.equal(formatYenShort(14999), '¥1.5万')
-    assert.equal(formatYenShort(15000), '¥1.5万')
-    assert.equal(formatYenShort(1018000), '¥101.8万')
-    assert.equal(formatYenShort(1124000), '¥112.4万')
-    assert.equal(formatYenShort(7041000), '¥704.1万')
-    assert.equal(formatYenShort(40324900), '¥4032.5万')
-    assert.equal(formatYenShort(89564900), '¥8956.5万')
-    assert.equal(formatYenShort(126459000), '¥12645.9万')
+  test('必要な小数第1位は残る', () => {
+    assert.equal(formatManShort(14999), '1.5万')
+    assert.equal(formatManShort(15000), '1.5万')
+    assert.equal(formatManShort(1018000), '101.8万')
+    assert.equal(formatManShort(93679000), '9,367.9万')
+    assert.equal(formatManShort(89564900), '8,956.5万')
+    assert.equal(formatManShort(126459000), '12,645.9万')
   })
 
-  test('formatCurrencyShort と同じ丸め精度（万円換算・小数第1位）', () => {
+  test('「¥」を付けない（1万円以上）', () => {
+    for (const v of [10000, 1018000, 93679000, 137870000]) {
+      assert.ok(!formatManShort(v).includes('¥'))
+    }
+  })
+
+  test('formatCurrencyShort と同じ丸め精度（カンマを除いた数値が一致）', () => {
     for (const v of [10001, 14999, 99999, 1018000, 40324900, 89564900, 126459000, 9999999]) {
-      assert.equal(formatYenShort(v), '¥' + formatCurrencyShort(v).replace('万円', '万'))
+      assert.equal(formatManShort(v).replace(/,/g, ''), formatCurrencyShort(v).replace('万円', '万'))
     }
   })
 })

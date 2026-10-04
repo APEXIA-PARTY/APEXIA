@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { TrendingUp, BarChart2, Users, Calendar, XCircle, DollarSign } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { EventYearlyAnalysis } from '@/components/analytics/EventYearlyAnalysis'
-import { formatYenShort } from '@/lib/utils/format'
+import { formatYenFull, formatManShort } from '@/lib/utils/format'
 
 // ─── フォーマットユーティリティ ────────────────────────────────
 const fmtNum  = (v: number) => v.toLocaleString()
@@ -270,9 +270,9 @@ function MonthlyTab({ year, onYearChange, years }: { year: string; onYearChange:
                   <TD right color="text-red-800">{m.cancelAuto}</TD>
                   <TD right color="text-red-400">{m.cancelBeforePreview}</TD>
                   <TD right color="text-red-600">{m.cancelAfterPreview}</TD>
-                  <TD right color="text-orange-600">{m.estimateTotal > 0 ? formatYenShort(m.estimateTotal) : '—'}</TD>
-                  <TD right bold color="text-green-700">{m.revenue > 0 ? formatYenShort(m.revenue) : '—'}</TD>
-                  <TD right>{m.avgPrice > 0 ? formatYenShort(m.avgPrice) : '—'}</TD>
+                  <TD right color="text-orange-600">{m.estimateTotal > 0 ? formatYenFull(m.estimateTotal) : '—'}</TD>
+                  <TD right bold color="text-green-700">{m.revenue > 0 ? formatYenFull(m.revenue) : '—'}</TD>
+                  <TD right>{m.avgPrice > 0 ? formatYenFull(m.avgPrice) : '—'}</TD>
                   <TD right>{fmtPct(m.previewRate)}</TD>
                   <TD right bold>{fmtPct(m.cvRate)}</TD>
                 </tr>
@@ -287,9 +287,9 @@ function MonthlyTab({ year, onYearChange, years }: { year: string; onYearChange:
                 <TD right color="text-red-800">{data.total.cancelAuto}</TD>
                 <TD right color="text-red-400">{data.total.cancelBeforePreview}</TD>
                 <TD right color="text-red-600">{data.total.cancelAfterPreview}</TD>
-                <TD right color="text-orange-600">{formatYenShort(data.total.estimateTotal)}</TD>
-                <TD right bold color="text-green-700">{formatYenShort(data.total.revenue)}</TD>
-                <TD right>{data.total.avgPrice > 0 ? formatYenShort(data.total.avgPrice) : '—'}</TD>
+                <TD right color="text-orange-600">{formatYenFull(data.total.estimateTotal)}</TD>
+                <TD right bold color="text-green-700">{formatYenFull(data.total.revenue)}</TD>
+                <TD right>{data.total.avgPrice > 0 ? formatYenFull(data.total.avgPrice) : '—'}</TD>
                 <TD right>{fmtPct(data.total.previewRate)}</TD>
                 <TD right bold>{fmtPct(data.total.cvRate)}</TD>
               </tr>)}
@@ -341,9 +341,9 @@ function MonthlyTab({ year, onYearChange, years }: { year: string; onYearChange:
                     <TD right color="text-red-800">{fmtAvg(colAvg('cancelAuto'))}</TD>
                     <TD right color="text-red-400">{fmtAvg(colAvg('cancelBeforePreview'))}</TD>
                     <TD right color="text-red-600">{fmtAvg(colAvg('cancelAfterPreview'))}</TD>
-                    <TD right color="text-orange-600">{avgEstimate > 0 ? formatYenShort(avgEstimate) : '—'}</TD>
-                    <TD right bold color="text-green-700">{avgRevenue > 0 ? formatYenShort(avgRevenue) : '—'}</TD>
-                    <TD right>{avgUnitPrice > 0 ? formatYenShort(avgUnitPrice) : '—'}</TD>
+                    <TD right color="text-orange-600">{avgEstimate > 0 ? formatYenFull(avgEstimate) : '—'}</TD>
+                    <TD right bold color="text-green-700">{avgRevenue > 0 ? formatYenFull(avgRevenue) : '—'}</TD>
+                    <TD right>{avgUnitPrice > 0 ? formatYenFull(avgUnitPrice) : '—'}</TD>
                     <TD right>{fmtPct(avgPreviewRate)}</TD>
                     <TD right bold>{fmtPct(avgCvRate)}</TD>
                   </tr>
@@ -384,8 +384,8 @@ function YearlyTab() {
                 <TD right color="text-red-800">{y.cancelAuto}</TD>
                 <TD right color="text-red-400">{y.cancelBeforePreview}</TD>
                 <TD right color="text-red-600">{y.cancelAfterPreview}</TD>
-                <TD right bold color="text-green-700">{formatYenShort(y.revenue)}</TD>
-                <TD right>{y.avgPrice > 0 ? formatYenShort(y.avgPrice) : '—'}</TD>
+                <TD right bold color="text-green-700">{formatYenFull(y.revenue)}</TD>
+                <TD right>{y.avgPrice > 0 ? formatYenFull(y.avgPrice) : '—'}</TD>
                 <TD right color={y.yoyInquiry === null ? '' : y.yoyInquiry >= 100 ? 'text-green-600' : 'text-red-500'}>{fmtYoY(y.yoyInquiry)}</TD>
                 <TD right color={y.yoyRevenue === null ? '' : y.yoyRevenue >= 100 ? 'text-green-600' : 'text-red-500'}>{fmtYoY(y.yoyRevenue)}</TD>
               </tr>
@@ -617,8 +617,8 @@ function EventCategoriesTab() {
                     <TD right>{fmtPct(r.inquiryShare)}</TD>
                     <TD right bold color="text-green-700">{fmtNum(r.confirmed)}</TD>
                     <TD right>{fmtPct(r.confirmShare)}</TD>
-                    <TD right color="text-green-700">{r.revenue > 0 ? formatYenShort(r.revenue) : '—'}</TD>
-                    <TD right>{r.avgPrice > 0 ? formatYenShort(r.avgPrice) : '—'}</TD>
+                    <TD right color="text-green-700">{r.revenue > 0 ? formatYenFull(r.revenue) : '—'}</TD>
+                    <TD right>{r.avgPrice > 0 ? formatYenFull(r.avgPrice) : '—'}</TD>
                     <TD right bold>{fmtPct(r.cvRate)}</TD>
                   </tr>
                   {expanded.has(r.id) && (r.subcategories ?? []).map((s: any) => (
@@ -626,8 +626,8 @@ function EventCategoriesTab() {
                       <TD><span className="ml-6 text-muted-foreground">└ {s.name}</span></TD>
                       <TD right>{fmtNum(s.inquiry)}</TD><TD right>{fmtPct(s.inquiryShare)}</TD>
                       <TD right>{fmtNum(s.confirmed)}</TD><TD right>{fmtPct(s.confirmShare)}</TD>
-                      <TD right>{s.revenue > 0 ? formatYenShort(s.revenue) : '—'}</TD>
-                      <TD right>{s.avgPrice > 0 ? formatYenShort(s.avgPrice) : '—'}</TD>
+                      <TD right>{s.revenue > 0 ? formatYenFull(s.revenue) : '—'}</TD>
+                      <TD right>{s.avgPrice > 0 ? formatYenFull(s.avgPrice) : '—'}</TD>
                       <TD right>{fmtPct(s.cvRate)}</TD>
                     </tr>
                   ))}
@@ -769,7 +769,7 @@ function OptionsTab() {
                 <tr key={r.id} className="hover:bg-muted/20">
                   <TD>{r.name}{r.machine_category && <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 text-xs">{r.machine_category}</span>}</TD>
                   <TD right bold>{r.useCount}</TD>
-                  <TD right color="text-green-700">{r.revenue > 0 ? formatYenShort(r.revenue) : '—'}</TD>
+                  <TD right color="text-green-700">{r.revenue > 0 ? formatYenFull(r.revenue) : '—'}</TD>
                 </tr>
               ))}
             </tbody>
@@ -1060,10 +1060,10 @@ export default function AnalyticsPage() {
             <KPI label="確定"        value={fmtNum(yk.confirmed)}                           icon={TrendingUp}  color="text-green-700" />
             <KPI label="下見前ｷｬﾝ"  value={fmtNum(yk.cancelBeforePreview)}                 icon={XCircle}     color="text-red-400" />
             <KPI label="下見後ｷｬﾝ"  value={fmtNum(yk.cancelAfterPreview)}                  icon={XCircle}     color="text-red-600" />
-            <KPI label="確定売上"    value={formatYenShort(yk.revenue)}                        icon={DollarSign}  color="text-green-700" />
-            <KPI label="平均単価"    value={yk.avgPrice > 0 ? formatYenShort(yk.avgPrice) : '—'} icon={BarChart2} color="text-blue-600" />
+            <KPI label="確定売上"    value={formatManShort(yk.revenue)}                        icon={DollarSign}  color="text-green-700" />
+            <KPI label="平均単価"    value={yk.avgPrice > 0 ? formatManShort(yk.avgPrice) : '—'} icon={BarChart2} color="text-blue-600" />
             <KPI label="→確定率"    value={fmtPct(yk.cvRate)}                              icon={TrendingUp}  color="text-orange-600" />
-            <KPI label="見積合計"    value={formatYenShort(yk.estimateTotal)}                  icon={DollarSign}  color="text-green-700" />
+            <KPI label="見積合計"    value={formatManShort(yk.estimateTotal)}                  icon={DollarSign}  color="text-green-700" />
             <KPI label="自動ｷｬﾝ累計" value={fmtNum(summary?.kpi?.thisMonth?.autoCancelTotal ?? 0)} icon={XCircle} color="text-red-800" />
           </div>
         </div>
@@ -1081,7 +1081,7 @@ export default function AnalyticsPage() {
                     <span className={cn('flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white', i === 0 ? 'bg-yellow-500' : i === 1 ? 'bg-gray-400' : 'bg-orange-400')}>{i + 1}</span>
                     <span className="text-sm">{r.name}</span>
                   </div>
-                  <span className="text-sm font-semibold text-green-700">{formatYenShort(r.revenue)}</span>
+                  <span className="text-sm font-semibold text-green-700">{formatYenFull(r.revenue)}</span>
                 </div>
               ))}
               {(summary.rankings[key] ?? []).length === 0 && <p className="text-sm text-muted-foreground">データなし</p>}
@@ -1115,11 +1115,11 @@ export default function AnalyticsPage() {
               { key: 'preview',  label: '下見', right: true, fmt: fmtNum },
               { key: 'confirmed', label: '確定', right: true, fmt: fmtNum, color: 'text-green-700' },
               { key: 'confirmShare', label: '確定割合', right: true, fmt: fmtPct },
-              { key: 'revenue', label: '確定売上', right: true, fmt: (v: number) => v > 0 ? formatYenShort(v) : '—', color: 'text-green-700' },
-              { key: 'avgPrice', label: '平均単価', right: true, fmt: (v: number) => v > 0 ? formatYenShort(v) : '—' },
+              { key: 'revenue', label: '確定売上', right: true, fmt: (v: number) => v > 0 ? formatYenFull(v) : '—', color: 'text-green-700' },
+              { key: 'avgPrice', label: '平均単価', right: true, fmt: (v: number) => v > 0 ? formatYenFull(v) : '—' },
               { key: 'cvRate', label: 'CV率', right: true, fmt: fmtPct },
-              { key: 'monthly_cost', label: '月額費用', right: true, fmt: (v: number) => v > 0 ? formatYenShort(v) : '—' },
-              { key: 'costPerConfirmed', label: '1件コスト', right: true, fmt: (v: number | null) => v ? formatYenShort(v) : '—' },
+              { key: 'monthly_cost', label: '月額費用', right: true, fmt: (v: number) => v > 0 ? formatYenFull(v) : '—' },
+              { key: 'costPerConfirmed', label: '1件コスト', right: true, fmt: (v: number | null) => v ? formatYenFull(v) : '—' },
             ]} />
             <MediaMonthlyBreakdown />
           </div>
@@ -1128,8 +1128,8 @@ export default function AnalyticsPage() {
         {tab === 'floors'           && <GenericMasterTab apiPath="/api/analytics/floors" label="フロア" columns={[
           { key: 'inquiry', label: '確定＋開催終了', right: true, fmt: fmtNum },
           { key: 'inquiryShare', label: '割合', right: true, fmt: fmtPct },
-          { key: 'revenue', label: '確定売上', right: true, fmt: (v: number) => v > 0 ? formatYenShort(v) : '—', color: 'text-green-700' },
-          { key: 'avgPrice', label: '平均単価', right: true, fmt: (v: number) => v > 0 ? formatYenShort(v) : '—' },
+          { key: 'revenue', label: '確定売上', right: true, fmt: (v: number) => v > 0 ? formatYenFull(v) : '—', color: 'text-green-700' },
+          { key: 'avgPrice', label: '平均単価', right: true, fmt: (v: number) => v > 0 ? formatYenFull(v) : '—' },
         ]} />}
         {tab === 'contact-methods'  && <GenericMasterTab apiPath="/api/analytics/contact-methods" label="連絡方法" columns={[
           { key: 'inquiry', label: '問合せ', right: true, fmt: fmtNum },
@@ -1138,8 +1138,8 @@ export default function AnalyticsPage() {
           { key: 'previewShare', label: '下見割合', right: true, fmt: fmtPct },
           { key: 'confirmed', label: '確定', right: true, fmt: fmtNum, color: 'text-green-700' },
           { key: 'confirmShare', label: '確定割合', right: true, fmt: fmtPct },
-          { key: 'revenue', label: '確定売上', right: true, fmt: (v: number) => v > 0 ? formatYenShort(v) : '—', color: 'text-green-700' },
-          { key: 'avgPrice', label: '平均単価', right: true, fmt: (v: number) => v > 0 ? formatYenShort(v) : '—' },
+          { key: 'revenue', label: '確定売上', right: true, fmt: (v: number) => v > 0 ? formatYenFull(v) : '—', color: 'text-green-700' },
+          { key: 'avgPrice', label: '平均単価', right: true, fmt: (v: number) => v > 0 ? formatYenFull(v) : '—' },
         ]} />}
         {tab === 'cancel-reasons'   && <CancelReasonsTab />}
         {tab === 'options'          && <OptionsTab />}
