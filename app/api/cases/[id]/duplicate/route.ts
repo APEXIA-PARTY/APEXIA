@@ -7,6 +7,7 @@ import {
   buildDuplicateInsertData,
   deleteCaseAndLogFailure,
 } from '@/lib/cases/duplicate'
+import { validateEventSubcategory } from '@/lib/cases/eventCategory'
 
 export async function POST(
   _request: NextRequest,
@@ -52,6 +53,18 @@ export async function POST(
     userId: user.id,
   })
   // id / created_at / updated_at は指定しない（DB側で新規生成させる）
+
+  // 複製元の中分類が大分類の配下でない場合（過去の不整合データ）は、不整合を複製先に持ち込まない。
+  // 中分類だけを空にする（大分類・自由入力メモは引き継ぐ。複製元は変更しない）。
+  // 確認自体に失敗した場合は従来どおり引き継ぐ（DBの外部キーは有効なため安全）。
+  const subcategoryCheck = await validateEventSubcategory(
+    supabase,
+    insertData.event_category_id,
+    insertData.event_subcategory_id
+  )
+  if (!subcategoryCheck.ok && subcategoryCheck.reason !== 'lookup_failed') {
+    insertData.event_subcategory_id = null
+  }
 
   // ─── 複製先の作成（INSERTのみ） ──────────────────────────────
   const { data: newCase, error: insertError } = await supabase

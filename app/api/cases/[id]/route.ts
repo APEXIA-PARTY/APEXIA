@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, requireStaff } from '@/lib/auth/helpers'
 import { shouldSetConfirmedAt } from '@/lib/cases/statusTransition'
+import { validateEventPairForSave } from '@/lib/cases/eventCategory'
 import type { CaseStatus } from '@/types/database'
 
 // ─── レガシーカラム（UIで直接編集しない / Zodが undefined→null に変換してしまう）
@@ -63,6 +64,12 @@ export async function PUT(
     if (!(STRIP_FIELDS as readonly string[]).includes(key)) {
       updateData[key] = value
     }
+  }
+
+  // 中分類が大分類の配下であること（保存後の組で検証。不整合は400で保存を拒否）
+  const invalidEvent = await validateEventPairForSave(supabase, updateData, { caseId: params.id })
+  if (invalidEvent) {
+    return NextResponse.json({ message: invalidEvent.message }, { status: invalidEvent.status })
   }
 
   // ─── confirmed_at の自動セット ────────────────────────────────

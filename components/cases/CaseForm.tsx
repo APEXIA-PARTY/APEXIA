@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react'
 import { caseFormSchema, CaseFormValues } from '@/lib/validations/case'
 import { STATUS_LIST, INVOICE_STATUS_OPTIONS, PAYMENT_METHOD_OPTIONS, DEPOSIT_STATUS_OPTIONS, REMAINING_PAYMENT_STATUS_OPTIONS } from '@/lib/constants/status'
 import { Case } from '@/types/database'
+import { shouldClearSubcategoryOnCategoryChange } from '@/lib/cases/eventCategory'
 import { PreviewDateTimeSelect, MINUTES, HOURS } from '@/components/cases/PreviewDateTimeSelect'
 
 interface CaseFormProps {
@@ -122,6 +123,7 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
     watch,
     control,
     setValue,
+    getValues,
     formState: { errors },
   } = useForm<CaseFormValues>({
     resolver: zodResolver(caseFormSchema),
@@ -164,6 +166,7 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
     },
   })
 
+  const eventCategoryField = register('event_category_id')
   const watchStatus = watch('status')
   const watchCategoryId = watch('event_category_id')
   const watchSubcategoryId = watch('event_subcategory_id')
@@ -444,7 +447,22 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
         <div className={grid2}>
           <div>
             <label className={lbl}>イベント大分類</label>
-            <select {...register('event_category_id')} className={sel}>
+            <select
+              {...eventCategoryField}
+              onChange={(e) => {
+                // ユーザーが大分類を変更したときだけ、中分類をクリアする（初期表示では呼ばれない）。
+                // 中分類は1つの大分類にしか属さないため、別の大分類に変えれば旧中分類は配下でなくなる。
+                // 自由入力メモ（event_subcategory_note）は消さない。
+                const previousCategoryId = getValues('event_category_id')
+                eventCategoryField.onChange(e)
+                if (shouldClearSubcategoryOnCategoryChange(previousCategoryId, e.target.value, getValues('event_subcategory_id'))) {
+                  setValue('event_subcategory_id', '')
+                }
+                // 初期値の再適用（中分類 option ロード後）が、旧中分類を復活させないようにする
+                initialSubcategorySet.current = true
+              }}
+              className={sel}
+            >
               {loadingOpt}
               {eventCategories.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>

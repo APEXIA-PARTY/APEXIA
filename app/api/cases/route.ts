@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { shouldSetConfirmedAt } from '@/lib/cases/statusTransition'
+import { validateEventPairForSave } from '@/lib/cases/eventCategory'
 import type { CaseStatus } from '@/types/database'
 
 // 一覧取得
@@ -26,6 +27,12 @@ export async function POST(req: Request) {
   try {
     const supabase = await createClient()
     const body = await req.json()
+
+    // 中分類が大分類の配下であること（不整合は400で保存を拒否）
+    const invalidEvent = await validateEventPairForSave(supabase, body as Record<string, unknown>)
+    if (invalidEvent) {
+      return NextResponse.json({ message: invalidEvent.message }, { status: invalidEvent.status })
+    }
 
     // confirmed_at はクライアントから直接指定不可（サーバー側でのみセットする）
     const { confirmed_at: _ignoredConfirmedAt, ...insertData } = body as Record<string, unknown>
