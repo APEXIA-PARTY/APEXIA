@@ -1,25 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, requireStaff } from '@/lib/auth/helpers'
-import { z } from 'zod'
+import { optionItemSchema, optionUpdateSchema } from '@/lib/validations/caseOption'
 
 type Params = { params: { id: string } }
 
-const optionItemSchema = z.object({
-  option_id:        z.string().uuid().nullable().optional(),
-  name:             z.string().min(1, '名称は必須です').max(200),
-  category:         z.enum(['equipment', 'machine']),
-  machine_category: z.enum(['音響', '照明', '映像', 'その他オペ']).nullable().optional(),
-  qty:              z.number().int().min(1).default(1),
-  unit_price:       z.number().int().min(0).default(0),
-  unit:             z.string().max(20).default('式'),
-  state:            z.enum(['未確認', '質問中', '検討中', '確定', '不要']).default('未確認'),
-  note:             z.string().max(500).optional().or(z.literal('')),
-  sort_order:       z.number().int().min(0).default(0),
-})
-
 /**
- * amount は DB の GENERATED ALWAYS AS (qty * unit_price) STORED カラムのため
+ * amount は DB の GENERATED ALWAYS AS (ROUND(qty * unit_price)::BIGINT) STORED カラムのため
  * クライアントから送信されても無視する（DB側で自動計算される）
  */
 
@@ -93,23 +80,25 @@ export async function PUT(request: NextRequest, { params }: Params) {
   try { body = await request.json() }
   catch { return NextResponse.json({ message: 'リクエストボディが不正です' }, { status: 400 }) }
 
-  const schema = z.object({
-    id:         z.string().uuid(),
-    name:       z.string().min(1).max(200).optional(),
-    qty:        z.number().int().min(1).optional(),
-    unit_price: z.number().int().min(0).optional(),
-    unit:       z.string().max(20).optional(),
-    state:      z.enum(['未確認', '質問中', '検討中', '確定', '不要']).optional(),
-    note:       z.string().max(500).nullable().optional(),
-    sort_order: z.number().int().min(0).optional(),
-  })
-
-  const parsed = schema.safeParse(body)
+  const parsed = optionUpdateSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ message: 'バリデーションエラー', errors: parsed.error.flatten() }, { status: 422 })
   }
 
   const { id, ...updates } = parsed.data
+
+  // 小数数量は機材・オペレーター（machine）のみ。備品・設備（equipment）は整数のみ
+  if (updates.qty !== undefined && !Number.isInteger(updates.qty)) {
+    const { data: target } = await supabase
+      .from('case_options')
+      .select('category')
+      .eq('id', id)
+      .eq('case_id', params.id)
+      .maybeSingle()
+    if (target?.category === 'equipment') {
+      return NextResponse.json({ message: '備品・設備の数量は整数で入力してください' }, { status: 422 })
+    }
+  }
   // amount は GENERATED カラムなので送らない（Supabaseが自動計算）
   const { amount: _drop, ...safeUpdates } = updates as any
 

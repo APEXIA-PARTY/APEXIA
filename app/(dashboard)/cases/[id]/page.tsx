@@ -164,7 +164,7 @@ export default async function CaseDetailPage({ params }: { params: { id: string 
       <CaseDetailTimeline caseData={c as any} />
 
       {/* ③ 確認手続き */}
-      <CaseDetailProcedure caseData={c as any} />
+      <CaseDetailProcedure caseData={c as any} caseId={params.id} isEditable={isEditable} />
 
       {/* ④ 飲食プラン */}
       <CaseFoodPlansSection

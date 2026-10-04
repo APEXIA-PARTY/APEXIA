@@ -111,7 +111,7 @@ export const caseFormSchema = z.object({
 
   // 確認手続き
   preview_datetime: emptyToUndefined(z.string().optional()),
-  application_form_status: z.enum(['未対応', '済み']).optional().default('未対応'),
+  application_form_status: z.enum(['未対応', '請求書送付済み', '済み']).optional().default('未対応'),
   delivery_notice_status: z.enum(['未対応', '済み']).optional().default('未対応'),
   deposit_status: z.enum(['未対応', '済み']).optional().default('未対応'),
   remaining_payment_status: z.enum(['未対応', '済み']).optional().default('未対応'),

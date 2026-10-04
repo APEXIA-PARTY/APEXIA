@@ -4,11 +4,19 @@ import { useState, useEffect } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils/cn'
+import {
+  qtyMin,
+  qtyStep,
+  parseQtyInput,
+  formatQty,
+  calcOptionAmount,
+  calcOptionSubtotalInclTax,
+  OPTION_TAX_RATE,
+} from '@/lib/utils/optionQty'
 
 type OptionState = '未確認' | '質問中' | '検討中' | '確定' | '不要'
 const OPTION_STATES: OptionState[] = ['未確認', '質問中', '検討中', '確定', '不要']
 const MACHINE_CATS = ['音響', '照明', '映像', 'その他オペ'] as const
-const TAX_RATE = 1.1
 
 const STATE_STYLE: Record<OptionState, string> = {
   '未確認': 'bg-gray-50 text-gray-600',
@@ -139,6 +147,19 @@ export function CaseOptionsSection({ caseId, isEditable = true }: CaseOptionsSec
     setSaving(null)
   }
 
+  // 数量：機材・オペレーターは小数（0.5 刻みなど）可、備品・設備は整数のみ。
+  // 不正値は保存せず、入力欄を元の値に戻す。
+  const saveQty = (item: OptionItem, input: HTMLInputElement) => {
+    const parsed = parseQtyInput(input.value, item.category)
+    if (!parsed.ok) {
+      toast.error(parsed.message)
+      input.value = String(item.qty)
+      return
+    }
+    if (parsed.value === item.qty) return
+    updateItem(item.id, 'qty', parsed.value)
+  }
+
   const deleteItem = async (id: string) => {
     const res = await fetch(`/api/cases/${caseId}/options?item_id=${id}`, { method: 'DELETE' })
     if (res.ok) {
@@ -156,7 +177,7 @@ export function CaseOptionsSection({ caseId, isEditable = true }: CaseOptionsSec
 
   const totalAmount = items
     .filter((i) => i.state !== '不要')
-    .reduce((sum, i) => sum + ((i.qty ?? 1) * (i.unit_price ?? 0)), 0)
+    .reduce((sum, i) => sum + calcOptionAmount(i.qty, i.unit_price), 0)
 
   if (loading) return <div className="h-16 animate-pulse rounded-lg bg-muted/40" />
 
@@ -165,7 +186,7 @@ export function CaseOptionsSection({ caseId, isEditable = true }: CaseOptionsSec
     : 'grid-cols-[1fr_60px_90px_90px_90px]'
 
   const ItemRow = ({ item }: { item: OptionItem }) => {
-    const subtotalInclTax = Math.round((item.qty ?? 1) * (item.unit_price ?? 0) * TAX_RATE)
+    const subtotalInclTax = calcOptionSubtotalInclTax(item.qty, item.unit_price)
 
     return (
       <>
@@ -241,12 +262,13 @@ export function CaseOptionsSection({ caseId, isEditable = true }: CaseOptionsSec
               <input
                 className={cn(INP, 'w-14 text-center')}
                 type="number"
-                min="1"
+                min={qtyMin(item.category)}
+                step={qtyStep(item.category)}
                 defaultValue={item.qty}
-                onBlur={(e) => updateItem(item.id, 'qty', Number(e.target.value))}
+                onBlur={(e) => saveQty(item, e.currentTarget)}
               />
             ) : (
-              <span className="tabular-nums">{item.qty}{item.unit}</span>
+              <span className="tabular-nums">{formatQty(item.qty)}{item.unit}</span>
             )}
             <span>×</span>
             {isEditable ? (
@@ -292,12 +314,13 @@ export function CaseOptionsSection({ caseId, isEditable = true }: CaseOptionsSec
             <input
               className={INP}
               type="number"
-              min="1"
+              min={qtyMin(item.category)}
+              step={qtyStep(item.category)}
               defaultValue={item.qty}
-              onBlur={(e) => updateItem(item.id, 'qty', Number(e.target.value))}
+              onBlur={(e) => saveQty(item, e.currentTarget)}
             />
           ) : (
-            <span className="text-center text-sm">{item.qty}</span>
+            <span className="text-center text-sm">{formatQty(item.qty)}</span>
           )}
 
           {/* 単価（税抜入力） */}
@@ -450,7 +473,7 @@ export function CaseOptionsSection({ caseId, isEditable = true }: CaseOptionsSec
         <div className="flex items-center justify-end gap-2 rounded-lg border border-border bg-card px-5 py-3">
           <span className="text-sm text-muted-foreground">オプション合計（不要除く・税込）</span>
           <span className="text-base font-bold tabular-nums text-foreground">
-            ¥{Math.round(totalAmount * TAX_RATE).toLocaleString()}
+            ¥{Math.round(totalAmount * OPTION_TAX_RATE).toLocaleString()}
           </span>
         </div>
       )}

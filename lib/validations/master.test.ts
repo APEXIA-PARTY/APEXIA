@@ -76,8 +76,9 @@ describe('機材区分リストの整合性（ソース内の各定義が同じ4
     assert.deepEqual(quoted(read('lib/validations/master.ts'), /machine_category:\s*z\.enum\(\[([^\]]*)\]\)/), EXPECTED)
   })
 
-  test('app/api/cases/[id]/options/route.ts の enum（案件オプションAPI）', () => {
-    assert.deepEqual(quoted(read('app/api/cases/[id]/options/route.ts'), /machine_category:\s*z\.enum\(\[([^\]]*)\]\)/), EXPECTED)
+  // 案件オプションAPIの Zod スキーマは lib/validations/caseOption.ts に切り出した（route.ts が import して使用）
+  test('lib/validations/caseOption.ts の enum（案件オプションAPI）', () => {
+    assert.deepEqual(quoted(read('lib/validations/caseOption.ts'), /machine_category:\s*z\.enum\(\[([^\]]*)\]\)/), EXPECTED)
   })
 
   test('lib/constants/status.ts の MACHINE_CATEGORIES', () => {
