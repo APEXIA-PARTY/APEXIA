@@ -243,3 +243,22 @@ export function calcMediaMonthly(
 
   return result
 }
+
+/**
+ * 月別内訳から、「無効なマスタ（is_active=false）で、対象年の実績が全月0件」の行だけを除外する。
+ * ・有効なマスタは0件でも残す（従来どおり）
+ * ・無効なマスタでも、対象年に問合せ・下見・確定のいずれかが1件でもあれば残す（履歴確認のため）
+ * ・集計値そのものは変更しない（行を取り除くだけ。残った行の months は calcMediaMonthly の結果のまま）
+ * ・is_active が不明（未取得）のマスタは有効として扱う。（未設定）行はマスタではないので常に残す
+ */
+export function excludeInactiveEmptyMediaRows(
+  rows: MediaMonthlyRow[],
+  masters: { id: string; is_active?: boolean | null }[]
+): MediaMonthlyRow[] {
+  const inactiveIds = new Set(masters.filter((m) => m.is_active === false).map((m) => m.id))
+  return rows.filter(
+    (row) =>
+      !inactiveIds.has(row.id) ||
+      row.months.some((m) => m.inquiry > 0 || m.preview > 0 || m.confirmed > 0)
+  )
+}
