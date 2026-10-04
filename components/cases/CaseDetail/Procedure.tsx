@@ -8,7 +8,7 @@ import { Case } from '@/types/database'
 import { formatCurrency } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 import {
-  APPLICATION_FORM_STATUS_OPTIONS,
+  DEPOSIT_STATUS_OPTIONS,
   FORM_STATUS_OPTIONS,
   DELIVERY_STATUS_OPTIONS,
   INVOICE_STATUS_OPTIONS,
@@ -56,9 +56,9 @@ const FIELD_LABEL: Record<ProcedureField, string> = {
 }
 
 const SELECT_OPTIONS: Record<ProcedureSelectField, readonly string[]> = {
-  application_form_status: APPLICATION_FORM_STATUS_OPTIONS,
+  application_form_status: FORM_STATUS_OPTIONS,
   delivery_notice_status: DELIVERY_STATUS_OPTIONS,
-  deposit_status: FORM_STATUS_OPTIONS,
+  deposit_status: DEPOSIT_STATUS_OPTIONS,
   remaining_payment_status: FORM_STATUS_OPTIONS,
   invoice_status: INVOICE_STATUS_OPTIONS,
   payment_method: PAYMENT_METHOD_OPTIONS,
@@ -326,9 +326,9 @@ export function CaseDetailProcedure({ caseData: c, caseId, isEditable = false }:
             {values.estimate_amount > 0 ? formatCurrency(values.estimate_amount) : '—'}
           </span>
         </Row>
-        {SelectRow({ field: 'application_form_status', okValues: ['済み'], progressValues: ['請求書送付済み'] })}
+        {SelectRow({ field: 'application_form_status', okValues: ['済み'] })}
         {SelectRow({ field: 'delivery_notice_status', okValues: ['済み'] })}
-        {SelectRow({ field: 'deposit_status', okValues: ['済み'] })}
+        {SelectRow({ field: 'deposit_status', okValues: ['済み'], progressValues: ['請求書送付済み'] })}
         {SelectRow({ field: 'remaining_payment_status', okValues: ['済み'] })}
         {SelectRow({ field: 'invoice_status', okValues: ['振り込み済み', '送付済み'] })}
         {SelectRow({ field: 'payment_method' })}

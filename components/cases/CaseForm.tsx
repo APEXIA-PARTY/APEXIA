@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { caseFormSchema, CaseFormValues } from '@/lib/validations/case'
-import { STATUS_LIST, INVOICE_STATUS_OPTIONS, PAYMENT_METHOD_OPTIONS, APPLICATION_FORM_STATUS_OPTIONS } from '@/lib/constants/status'
+import { STATUS_LIST, INVOICE_STATUS_OPTIONS, PAYMENT_METHOD_OPTIONS, DEPOSIT_STATUS_OPTIONS } from '@/lib/constants/status'
 import { Case } from '@/types/database'
 import { PreviewDateTimeSelect, MINUTES, HOURS } from '@/components/cases/PreviewDateTimeSelect'
 
@@ -604,9 +604,8 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
           <div>
             <label className={lbl}>申込みフォーム</label>
             <select {...register('application_form_status')} className={sel}>
-              {APPLICATION_FORM_STATUS_OPTIONS.map((v) => (
-                <option key={v} value={v}>{v}</option>
-              ))}
+              <option value="未対応">未対応</option>
+              <option value="済み">済み</option>
             </select>
           </div>
           <div>
@@ -627,8 +626,9 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
           <div>
             <label className={lbl}>申込み金</label>
             <select {...register('deposit_status')} className={sel}>
-              <option value="未対応">未対応</option>
-              <option value="済み">済み</option>
+              {DEPOSIT_STATUS_OPTIONS.map((v) => (
+                <option key={v} value={v}>{v}</option>
+              ))}
             </select>
           </div>
           <div>

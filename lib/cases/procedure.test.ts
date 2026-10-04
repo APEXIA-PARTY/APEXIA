@@ -68,20 +68,33 @@ describe('validatePreviewDateTime', () => {
 })
 
 describe('validateProcedureSelect', () => {
-  test('申込みフォーム: 未対応 / 請求書送付済み / 済み の 3 値を許可', () => {
-    for (const v of ['未対応', '請求書送付済み', '済み']) {
+  test('申込みフォーム: 未対応 / 済み の 2 値のみ許可（請求書送付済みは不可）', () => {
+    for (const v of ['未対応', '済み']) {
       assert.deepEqual(validateProcedureSelect('application_form_status', v), { ok: true, value: v })
     }
+    assert.equal(validateProcedureSelect('application_form_status', '請求書送付済み').ok, false)
   })
 
-  test('申込みフォーム: 3 値以外（空・他項目の値）は不可', () => {
-    for (const v of ['', '発行依頼', '送付済み', '振り込み済み', '済']) {
+  test('申込みフォーム: 2 値以外（空・他項目の値）は不可', () => {
+    for (const v of ['', '請求書送付済み', '発行依頼', '送付済み', '振り込み済み', '済']) {
       assert.equal(validateProcedureSelect('application_form_status', v).ok, false, v)
     }
   })
 
-  test('搬入出届 / 申込み金 / 残額支払いは従来どおり 未対応・済み のみ（請求書送付済みは不可）', () => {
-    for (const f of ['delivery_notice_status', 'deposit_status', 'remaining_payment_status'] as const) {
+  test('申込み金: 未対応 / 請求書送付済み / 済み の 3 値を許可', () => {
+    for (const v of ['未対応', '請求書送付済み', '済み']) {
+      assert.deepEqual(validateProcedureSelect('deposit_status', v), { ok: true, value: v })
+    }
+  })
+
+  test('申込み金: 3 値以外（空・他項目の値）は不可', () => {
+    for (const v of ['', '発行依頼', '送付済み', '振り込み済み', '済']) {
+      assert.equal(validateProcedureSelect('deposit_status', v).ok, false, v)
+    }
+  })
+
+  test('搬入出届 / 残額支払いは従来どおり 未対応・済み のみ（請求書送付済みは不可）', () => {
+    for (const f of ['delivery_notice_status', 'remaining_payment_status'] as const) {
       assert.equal(validateProcedureSelect(f, '未対応').ok, true)
       assert.equal(validateProcedureSelect(f, '済み').ok, true)
       assert.equal(validateProcedureSelect(f, '請求書送付済み').ok, false, f)
@@ -102,34 +115,107 @@ describe('validateProcedureSelect', () => {
   })
 })
 
-describe('申込みフォーム 3 値の整合（Zod / 定数 / 型 / 画面 / migration）', () => {
-  test('案件フォームの Zod スキーマが 3 値を許可し、既定値は 未対応', () => {
-    for (const v of ['未対応', '請求書送付済み', '済み']) {
-      const r = caseFormSchema.shape.application_form_status.safeParse(v)
+describe('「請求書送付済み」は申込み金（deposit_status）のみ（Zod / 定数 / 型 / 画面 / migration）', () => {
+  test('案件フォームの Zod: 申込みフォームは 2 値（請求書送付済みは不可）、既定値は 未対応', () => {
+    const f = caseFormSchema.shape.application_form_status
+    for (const v of ['未対応', '済み']) {
+      const r = f.safeParse(v)
       assert.ok(r.success, v)
       assert.equal(r.data, v)
     }
-    assert.equal(caseFormSchema.shape.application_form_status.safeParse(undefined).data, '未対応')
+    assert.equal(f.safeParse('請求書送付済み').success, false)
+    assert.equal(f.safeParse(undefined).data, '未対応')
   })
 
-  test('定数・型・案件編集フォームに 3 値（保存値＝表示ラベル）がある', () => {
-    assert.ok(read('lib/constants/status.ts').includes("APPLICATION_FORM_STATUS_OPTIONS = ['未対応', '請求書送付済み', '済み']"))
-    assert.ok(read('types/database.ts').includes("ApplicationFormStatus = '未対応' | '請求書送付済み' | '済み'"))
+  test('案件フォームの Zod: 申込み金は 3 値、既定値は 未対応', () => {
+    const f = caseFormSchema.shape.deposit_status
+    for (const v of ['未対応', '請求書送付済み', '済み']) {
+      const r = f.safeParse(v)
+      assert.ok(r.success, v)
+      assert.equal(r.data, v)
+    }
+    assert.equal(f.safeParse('不明').success, false)
+    assert.equal(f.safeParse(undefined).data, '未対応')
+  })
+
+  test('他の確認手続き項目（搬入出届・残額支払い）は 2 値のまま', () => {
+    for (const k of ['delivery_notice_status', 'remaining_payment_status'] as const) {
+      assert.equal(caseFormSchema.shape[k].safeParse('請求書送付済み').success, false, k)
+      assert.equal(caseFormSchema.shape[k].safeParse('済み').success, true, k)
+    }
+  })
+
+  test('定数・型・案件編集フォーム: 申込み金だけが 3 値で、APPLICATION_FORM_STATUS_OPTIONS は存在しない', () => {
+    const status = read('lib/constants/status.ts')
+    assert.ok(status.includes("DEPOSIT_STATUS_OPTIONS = ['未対応', '請求書送付済み', '済み']"))
+    assert.ok(!status.includes('APPLICATION_FORM_STATUS_OPTIONS'))
+    const types = read('types/database.ts')
+    assert.ok(types.includes("ApplicationFormStatus = '未対応' | '済み'"))
+    assert.ok(types.includes("DepositStatus = '未対応' | '請求書送付済み' | '済み'"))
     const form = read('components/cases/CaseForm.tsx')
-    assert.ok(form.includes('APPLICATION_FORM_STATUS_OPTIONS.map'))
+    assert.ok(form.includes('DEPOSIT_STATUS_OPTIONS.map'))
+    assert.ok(!form.includes('APPLICATION_FORM_STATUS_OPTIONS'))
   })
 
-  test('migration は CHECK 制約のみを 3 値に変更し、行データは変更しない（未適用）', () => {
-    const sql = read('supabase/migrations/20261004_add_application_form_invoice_sent.sql')
-    assert.ok(sql.includes("CHECK (application_form_status IN ('未対応', '請求書送付済み', '済み'))"))
-    assert.ok(sql.includes('未適用'))
-    const body = sql
+  test('詳細画面: 青いピル（progressValues）は申込み金の行だけに付く', () => {
+    const src = read('components/cases/CaseDetail/Procedure.tsx')
+    const lines = src.split('\n').filter((l) => l.includes('progressValues: ['))
+    assert.equal(lines.length, 1)
+    assert.ok(lines[0].includes("field: 'deposit_status'"))
+    assert.ok(!src.includes('APPLICATION_FORM_STATUS_OPTIONS'))
+  })
+
+  test('過去の migration（適用済み）は履歴として残っている（編集されていない）', () => {
+    const old = read('supabase/migrations/20261004_add_application_form_invoice_sent.sql')
+    assert.ok(old.includes("CHECK (application_form_status IN ('未対応', '請求書送付済み', '済み'))"))
+  })
+})
+
+describe('訂正 migration（20261004_move_invoice_sent_to_deposit_status.sql）の静的確認', () => {
+  const file = 'supabase/migrations/20261004_move_invoice_sent_to_deposit_status.sql'
+  const body = () =>
+    read(file)
       .split('\n')
       .filter((l) => !l.trim().startsWith('--'))
       .join('\n')
-    assert.ok(!/\b(INSERT|UPDATE|DELETE|TRUNCATE)\b/.test(body))
-    const tables = Array.from(body.matchAll(/ALTER TABLE\s+(\w+)/g), (m) => m[1])
-    assert.ok(tables.length >= 1 && tables.every((t) => t === 'cases'))
+
+  test('未適用の注記があり、BEGIN / COMMIT で囲まれている', () => {
+    const sql = read(file)
+    assert.ok(sql.includes('未適用'))
+    assert.ok(/^BEGIN;$/m.test(body()))
+    assert.ok(/^COMMIT;$/m.test(body()))
+  })
+
+  test('データ変更文（INSERT / UPDATE / DELETE / TRUNCATE）を含まない', () => {
+    assert.ok(!/\b(INSERT|UPDATE|DELETE|TRUNCATE)\b/i.test(body()))
+  })
+
+  test('安全チェック: 申込みフォームが 未対応/済み 以外・申込み金が 未対応/済み 以外なら RAISE EXCEPTION で中断', () => {
+    const b = body()
+    assert.ok(b.includes("application_form_status NOT IN ('未対応', '済み')"))
+    assert.ok(b.includes("deposit_status NOT IN ('未対応', '済み')"))
+    assert.equal((b.match(/RAISE EXCEPTION/g) ?? []).length, 2)
+  })
+
+  test('安全チェックは制約変更より前にある', () => {
+    const b = body()
+    assert.ok(b.indexOf('RAISE EXCEPTION') < b.indexOf('ALTER TABLE'))
+  })
+
+  test('制約名は固定指定（動的検索なし）で、cases の2制約だけを変更する', () => {
+    const b = body()
+    assert.ok(!b.includes('pg_constraint'))
+    const drops = Array.from(b.matchAll(/DROP CONSTRAINT\s+(\w+)/g), (m) => m[1])
+    assert.deepEqual(drops, ['cases_application_form_status_check', 'cases_deposit_status_check'])
+    assert.ok(!/DROP CONSTRAINT IF EXISTS/i.test(b))
+    const tables = Array.from(b.matchAll(/ALTER TABLE\s+(\w+)/g), (m) => m[1])
+    assert.ok(tables.length === 4 && tables.every((t) => t === 'cases'))
+  })
+
+  test('最終的な CHECK は 申込みフォーム=2値 / 申込み金=3値', () => {
+    const b = body()
+    assert.ok(b.includes("CHECK (application_form_status IN ('未対応', '済み'))"))
+    assert.ok(b.includes("CHECK (deposit_status IN ('未対応', '請求書送付済み', '済み'))"))
   })
 })
 
