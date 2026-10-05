@@ -67,6 +67,9 @@ export interface CaseRow {
   /** 収益ステータス(confirmed/done)へ新規突入した日時。イベント日方式の月別確定集計でのみ使用。
    *  select() で明示的に取得したルートのみ実際の値が入る（それ以外は undefined） */
   confirmed_at?: string | null
+  /** 最後に cancelled へ新規突入した正確な時刻（timestamptz の瞬間）。DB トリガーが打刻する。
+   *  NULL = 旧データ・Excel取込（キャンセル時刻が不明）。select() で明示的に取得したルートのみ値が入る */
+  cancelled_at?: string | null
 }
 
 // ─── 下見の実施判定（preview_datetime と現在日時の比較）──────────────
@@ -103,14 +106,52 @@ export function isPreviewDone(previewDatetime: string | null | undefined, now: D
   return wall !== null && wall <= toJstWallClock(now)
 }
 
+// ─── 下見前/後キャンセルの判定 ────────────────────────────────────
+//
+// ・cancelled_at あり（正確）: キャンセルの瞬間までに下見が実施済みなら「下見後」、それ以外（下見なし／キャンセル時点では未来）は「下見前」。
+//     下見日時の壁時計（JST）と、キャンセル時刻を JST 壁時計に直したものを比較する（isPreviewDone に cancelled_at を渡す）。
+//     ちょうど同時刻は「下見後」。
+// ・cancelled_at なし（旧データ・Excel取込）: 従来どおり preview_datetime の有無で推定する（あり=下見後 / なし=下見前）。
+//     これにより過去の下見前/下見後の件数の意味を突然変えない。estimated=true で区別できる。
+export type CancelTiming = 'before' | 'after'
+
+export interface CancelTimingResult {
+  timing: CancelTiming
+  /** true = cancelled_at が無く、従来ルール（下見日時の有無）で推定した結果 */
+  estimated: boolean
+}
+
+/** cancelled_at を Date に。無い・不正な値は null（旧データ扱いにする） */
+function parseCancelledAt(value: string | null | undefined): Date | null {
+  if (!value) return null
+  const d = new Date(value)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+/** キャンセル案件の下見前/後を判定する。cancelled でない案件は null */
+export function classifyCancelTiming(c: {
+  status: CaseStatus
+  preview_datetime: string | null
+  cancelled_at?: string | null
+}): CancelTimingResult | null {
+  if (c.status !== CANCEL_STATUS) return null
+  const cancelledAt = parseCancelledAt(c.cancelled_at)
+  if (cancelledAt) {
+    return { timing: isPreviewDone(c.preview_datetime, cancelledAt) ? 'after' : 'before', estimated: false }
+  }
+  return { timing: c.preview_datetime ? 'after' : 'before', estimated: true }
+}
+
 export interface KpiResult {
   inquiry: number              // 問合せ件数
   preview: number              // 下見件数（下見実施済み = preview_datetime が現在日時以前。未来の予定は含めない）
   confirmed: number            // 確定件数（confirmed + done の全件。下見を経由しない直接確定も含む）
   cancelManual: number         // 手動キャンセル
   cancelAuto: number           // 自動キャンセル
-  cancelBeforePreview: number  // 下見前キャンセル
-  cancelAfterPreview: number   // 下見後キャンセル
+  cancelBeforePreview: number  // 下見前キャンセル（cancelled_at があれば正確な判定、無ければ従来ルールの推定を含む）
+  cancelAfterPreview: number   // 下見後キャンセル（同上）
+  cancelBeforePreviewEstimated: number // 上記のうち、cancelled_at が無く従来ルールで推定した件数（常に cancelBeforePreview 以下）
+  cancelAfterPreviewEstimated: number  // 同上（下見後）
   estimateTotal: number        // 見積合計（キャンセル除く）
   revenue: number              // 確定売上
   avgPrice: number             // 平均単価
@@ -149,14 +190,14 @@ export function calcKpi(cases: CaseRow[], now: Date = new Date()): KpiResult {
     (c) => c.status === CANCEL_STATUS && c.auto_cancel
   ).length
 
-  // 下見前/下見後キャンセルは、従来どおり preview_datetime の有無（予定を含む）で判定する
-  const cancelBeforePreview = cases.filter(
-    (c) => c.status === CANCEL_STATUS && !c.preview_datetime
-  ).length
-
-  const cancelAfterPreview = cases.filter(
-    (c) => c.status === CANCEL_STATUS && !!c.preview_datetime
-  ).length
+  // 下見前/下見後キャンセル: cancelled_at があればキャンセル時点で判定、無ければ従来ルール（preview_datetime の有無）で推定
+  const cancelTimings = cases
+    .map((c) => classifyCancelTiming(c))
+    .filter((t): t is CancelTimingResult => t !== null)
+  const cancelBeforePreview = cancelTimings.filter((t) => t.timing === 'before').length
+  const cancelAfterPreview = cancelTimings.filter((t) => t.timing === 'after').length
+  const cancelBeforePreviewEstimated = cancelTimings.filter((t) => t.timing === 'before' && t.estimated).length
+  const cancelAfterPreviewEstimated = cancelTimings.filter((t) => t.timing === 'after' && t.estimated).length
 
   const estimateTotal = cases
     .filter((c) => c.status !== CANCEL_STATUS)
@@ -179,6 +220,8 @@ export function calcKpi(cases: CaseRow[], now: Date = new Date()): KpiResult {
     cancelAuto,
     cancelBeforePreview,
     cancelAfterPreview,
+    cancelBeforePreviewEstimated,
+    cancelAfterPreviewEstimated,
     estimateTotal,
     revenue,
     avgPrice,

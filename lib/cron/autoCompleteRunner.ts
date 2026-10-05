@@ -6,8 +6,10 @@
  * ・dry : 候補を SELECT して集計を返すだけ。UPDATE / INSERT は一切しない
  * ・live: 対象が AUTO_COMPLETE_MAX_WRITE_COUNT 件以下の場合のみ書込む（超えたら1件も書かず中止）。
  *   UPDATE 文にも「id ＋ 旧 status = confirmed ＋ event_date 条件」を付ける（service role は RLS を迂回するため）。
- *   SELECT の後で別 status に変えられた案件は上書きしない。履歴は実際に更新された案件についてだけ書く。
- *   confirmed_at には触れない（confirmed → done で確定日時を書き換えない）。
+ *   SELECT の後で別 status に変えられた案件は上書きしない。
+ *   case_history への履歴（status_change）は DB トリガーが UPDATE と同一トランザクションで記録する。
+ *   ランナーは case_history に一切書かない（二重履歴の防止）。
+ *   confirmed_at と cancelled_at には触れない（confirmed → done で確定日時を書き換えない。トリガーも cancelled への遷移でしか打刻しない）。
  */
 import { getJstTodayDateString } from '../utils/autoComplete.ts'
 import type { CronMode } from './mode.ts'
@@ -24,7 +26,6 @@ export async function runAutoComplete(opts: {
   decision: 'dry' | 'live'
   mode: CronMode
   now?: Date
-  actorUserId?: string | null
 }): Promise<CronRunResult> {
   const { client, mode } = opts
   // 多重防御: mode が live でなければ、呼び出し側が live を指定しても書込みは一切しない（dry として扱う）
@@ -95,28 +96,11 @@ export async function runAutoComplete(opts: {
   }
 
   const updated = (updatedRows ?? []) as { id: string; event_date: string }[]
-  let historyRecorded = true
-  if (updated.length > 0) {
-    // 新しい action_type は追加せず、既存の CHECK 制約に含まれる 'status_change' を使う（migration 不要）
-    const { error: historyError } = await client.from('case_history').insert(
-      updated.map((c) => ({
-        case_id: c.id,
-        action_type: 'status_change' as const,
-        message: `開催日（${c.event_date}）経過による自動開催終了（確定→開催終了）`,
-        old_value: { status: 'confirmed' },
-        new_value: { status: 'done' },
-        changed_by: opts.actorUserId ?? null,
-      }))
-    )
-    if (historyError) {
-      historyRecorded = false
-      console.error('[auto-complete] 履歴挿入失敗（status更新は成功済み）:', historyError)
-    }
-  }
+  // 履歴（case_history）は DB トリガーが UPDATE と同一トランザクションで記録する。ここでは何も書かない
 
   console.log(`[auto-complete] ${updated.length}件を自動的に開催終了へ変更しました`)
   return {
     status: 200,
-    body: { ...base, dryRun: false, processed: updated.length, historyRecorded, message: `${updated.length}件を開催終了へ変更しました` },
+    body: { ...base, dryRun: false, processed: updated.length, message: `${updated.length}件を開催終了へ変更しました` },
   }
 }

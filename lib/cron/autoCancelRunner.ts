@@ -8,7 +8,10 @@
  *        （無い・複数なら中止。「連絡不通」などの代用はしない。理由なしでキャンセルもしない）
  *   書込みは status ごとに、「id ＋ 期待する旧 status ＋ event_date の条件」を UPDATE 文にも付けて行う。
  *   SELECT の後でスタッフが status を変えた案件は条件に一致せず、上書きされない。
- *   履歴（case_history）は、実際に更新された案件についてだけ書く。2回目の実行は対象が0件になる（冪等）。
+ *   cancelled_at の打刻と case_history への履歴（auto_cancel）は、この UPDATE を契機に DB トリガー
+ *   （supabase/migrations/20261005_cases_status_change_trigger.sql）が同一トランザクションで行う。
+ *   ランナーは case_history に一切書かない（二重履歴の防止）。実際に更新された行にだけトリガーが発火するため、
+ *   「UPDATE 成功件数 = 履歴件数 = cancelled_at 打刻件数」が構造的に成り立つ。2回目の実行は対象が0件になる（冪等）。
  *
  * DB クライアントは呼び出し側が渡す。cron の GET は service role（RLS 迂回のため UPDATE 条件を必ず付ける）、
  * 管理者の POST はログイン済みセッションのクライアント。
@@ -44,8 +47,6 @@ export async function runAutoCancel(opts: {
   decision: 'dry' | 'live'
   mode: CronMode
   now?: Date
-  /** 履歴の実行者。cron は null（システム） */
-  actorUserId?: string | null
 }): Promise<CronRunResult> {
   const { client, mode } = opts
   // 多重防御: mode が live でなければ、呼び出し側が live を指定しても書込みは一切しない（dry として扱う）
@@ -155,7 +156,7 @@ export async function runAutoCancel(opts: {
   const idsByStatus: Record<AutoCancelStatus, string[]> = { inquiry: [], preview_adj: [], previewed: [] }
   for (const c of candidates) idsByStatus[c.status as AutoCancelStatus].push(c.id)
 
-  const updated: { id: string; event_date: string; fromStatus: AutoCancelStatus }[] = []
+  const updated: { id: string; event_date: string; cancelled_at: string | null; fromStatus: AutoCancelStatus }[] = []
   for (const status of AUTO_CANCEL_STATUSES) {
     const ids = idsByStatus[status]
     if (ids.length === 0) continue
@@ -174,36 +175,24 @@ export async function runAutoCancel(opts: {
       .not('event_date', 'is', null)
       .lt('event_date', window.cutoffs[status])
       .gte('event_date', window.lookbackStart)
-      .select('id,event_date')
+      .select('id,event_date,cancelled_at')
     if (error) {
       return {
         status: 500,
         body: { ...base, dryRun: false, message: '自動キャンセルの更新に失敗しました（一部は更新済みの可能性があります）', stage: '更新', processedBeforeError: updated.length },
       }
     }
-    for (const r of (data ?? []) as { id: string; event_date: string }[]) {
-      updated.push({ id: r.id, event_date: r.event_date, fromStatus: status })
+    for (const r of (data ?? []) as { id: string; event_date: string; cancelled_at: string | null }[]) {
+      updated.push({ id: r.id, event_date: r.event_date, cancelled_at: r.cancelled_at ?? null, fromStatus: status })
     }
   }
 
-  // 履歴は「実際に更新された案件」についてだけ書く（二重実行・競合で更新されなかった案件は書かない）
-  let historyRecorded = true
-  if (updated.length > 0) {
-    const { error } = await client.from('case_history').insert(
-      updated.map((u) => ({
-        case_id: u.id,
-        action_type: 'auto_cancel' as const,
-        message: `開催日（${u.event_date}）から所定の猶予日数を経過したため自動キャンセル`,
-        old_value: { status: u.fromStatus },
-        new_value: { status: 'cancelled', auto_cancel: true },
-        changed_by: opts.actorUserId ?? null,
-      }))
-    )
-    if (error) {
-      historyRecorded = false
-      // status の更新は成功済みのため、ロールバックはしない。ログにのみ残す
-      console.error('[auto-cancel] 履歴挿入失敗（status更新は成功済み）:', error)
-    }
+  // 履歴（case_history）と cancelled_at は DB トリガーが UPDATE と同一トランザクションで記録する。ここでは何も書かない
+  // トリガーが打刻した件数。更新件数と一致しなければ、トリガー（cancelled_at の打刻・履歴）が働いていない恐れがある
+  const stampedCancelledAt = updated.filter((u) => u.cancelled_at).length
+  const triggerWarning = stampedCancelledAt !== updated.length
+  if (triggerWarning) {
+    console.error(`[auto-cancel] cancelled_at の打刻数(${stampedCancelledAt})が更新数(${updated.length})と一致しません。DB トリガーの適用状況を確認してください`)
   }
 
   const processedByStatus: Record<string, number> = {}
@@ -211,6 +200,6 @@ export async function runAutoCancel(opts: {
   console.log(`[auto-cancel] ${updated.length}件を自動キャンセルしました`)
   return {
     status: 200,
-    body: { ...base, dryRun: false, processed: updated.length, processedByStatus, historyRecorded, message: `${updated.length}件を自動キャンセルしました` },
+    body: { ...base, dryRun: false, processed: updated.length, processedByStatus, stampedCancelledAt, ...(triggerWarning ? { triggerWarning: true } : {}), message: `${updated.length}件を自動キャンセルしました` },
   }
 }

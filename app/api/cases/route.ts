@@ -35,7 +35,12 @@ export async function POST(req: Request) {
     }
 
     // confirmed_at はクライアントから直接指定不可（サーバー側でのみセットする）
-    const { confirmed_at: _ignoredConfirmedAt, ...insertData } = body as Record<string, unknown>
+    // cancelled_at もクライアントから直接指定不可。新規作成時は常に NULL（打刻は UPDATE で cancelled へ遷移したとき DB トリガーだけが行う）
+    const {
+      confirmed_at: _ignoredConfirmedAt,
+      cancelled_at: _ignoredCancelledAt,
+      ...insertData
+    } = body as Record<string, unknown>
 
     // 新規作成時点で収益ステータス（confirmed/done）で登録された場合はここでセットする
     // （旧ステータスは存在しない＝undefinedとして判定する）

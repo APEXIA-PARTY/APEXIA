@@ -17,6 +17,7 @@ const STRIP_FIELDS = [
   'updated_at',    // Supabase trigger で自動更新
   'created_by',    // 上書き不可
   'confirmed_at',  // クライアントから直接指定不可。ステータス遷移検知時にサーバー側でのみセットする
+  'cancelled_at',  // クライアントから直接指定不可。cancelled への遷移時に DB トリガーだけが打刻する
 ] as const
 
 export async function GET(

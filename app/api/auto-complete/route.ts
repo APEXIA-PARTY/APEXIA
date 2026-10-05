@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createCronAdminClient } from '@/lib/supabase/admin'
-import { requireAdmin, getCurrentUser } from '@/lib/auth/helpers'
+import { requireAdmin } from '@/lib/auth/helpers'
 import { verifyCronAuth } from '@/lib/cron/auth'
 import { decideExecution, parseDryRunBody, parseDryRunParam, resolveCronMode } from '@/lib/cron/mode'
 import { runAutoComplete } from '@/lib/cron/autoCompleteRunner'
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: 'cron の DB 接続が設定されていません' }, { status: 500 })
   }
 
-  const result = await runAutoComplete({ client, decision, mode, actorUserId: null })
+  const result = await runAutoComplete({ client, decision, mode })
   return NextResponse.json(result.body, { status: result.status })
 }
 
@@ -82,7 +82,6 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = await createClient()
-  const user = await getCurrentUser()
-  const result = await runAutoComplete({ client: supabase, decision, mode, actorUserId: user?.id ?? null })
+  const result = await runAutoComplete({ client: supabase, decision, mode })
   return NextResponse.json(result.body, { status: result.status })
 }

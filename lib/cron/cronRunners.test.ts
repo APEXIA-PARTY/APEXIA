@@ -5,6 +5,12 @@
  *
  * 偽 DB は、実際のコードが使うクエリ（select / eq / in / not / lt / gte / limit / update / insert）を
  * 再現し、書込みの記録・SELECT と UPDATE の間の競合（beforeWrite）・エラー注入ができる。
+ *
+ * DB トリガー（supabase/migrations/20261005_cases_status_change_trigger.sql）は hooks.trigger=true（既定）で模擬する:
+ *   cases の UPDATE で status が変わった行に対し、cancelled への遷移なら cancelled_at を打刻し、
+ *   case_history へ 1 行（自動キャンセルは auto_cancel、それ以外は status_change）を追加する。
+ *   模擬が SQL と一致していることは、実 DB エンジン（PGlite・メモリ上）での検証と migration の静的テストで別途確認している。
+ *   ランナー自身が case_history に書いた場合は db.log に残る（トリガー模擬の書込みは db.log に残らない）。
  */
 import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
@@ -22,7 +28,8 @@ function makeDb(seed: { cases?: Row[]; cancel_reason_master?: Row[]; case_histor
     case_history: seed.case_history ?? [],
   }
   const log: { table: string; op: 'select' | 'update' | 'insert'; cols?: string; payload?: unknown }[] = []
-  const hooks: { beforeWrite: (() => void) | null; failOn: { table: string; op: string } | null } = { beforeWrite: null, failOn: null }
+  const hooks: { beforeWrite: (() => void) | null; failOn: { table: string; op: string } | null; trigger: boolean } = { beforeWrite: null, failOn: null, trigger: true }
+  const TRIGGER_NOW = '2026-10-05T03:00:00.000Z'
 
   class Query implements PromiseLike<{ data: Row[] | null; error: { message: string } | null }> {
     private op: 'select' | 'update' | 'insert' = 'select'
@@ -59,7 +66,23 @@ function makeDb(seed: { cases?: Row[]; cancel_reason_master?: Row[]; case_histor
       if (this.op === 'update') {
         hooks.beforeWrite?.() // SELECT と UPDATE の間に、別の操作で状態が変わった場合を再現する
         const matched = rows.filter((r) => this.filters.every((f) => f(r)))
-        for (const r of matched) Object.assign(r, this.payload as Row)
+        for (const r of matched) {
+          const oldStatus = r.status
+          const oldAuto = r.auto_cancel
+          Object.assign(r, this.payload as Row)
+          if (hooks.trigger && this.table === 'cases' && oldStatus !== r.status) {
+            // BEFORE トリガー: OLD.status <> cancelled かつ NEW.status = cancelled のときだけ打刻
+            if (r.status === 'cancelled' && oldStatus !== 'cancelled') r.cancelled_at = TRIGGER_NOW
+            // AFTER トリガー: status が変わった行ごとに履歴を1行
+            const isAuto = r.status === 'cancelled' && r.auto_cancel === true && oldAuto !== true
+            tables.case_history.push({
+              case_id: r.id, action_type: isAuto ? 'auto_cancel' : 'status_change',
+              old_value: { status: oldStatus },
+              new_value: isAuto ? { status: r.status, auto_cancel: r.auto_cancel, source: 'auto_cancel' } : { status: r.status, auto_cancel: r.auto_cancel },
+              changed_by: null,
+            })
+          }
+        }
         return { data: this.returning ? matched.map((r) => this.project(r)) : null, error: null }
       }
       const matched = rows.filter((r) => this.filters.every((f) => f(r))).slice(0, this.limitN)
@@ -86,7 +109,7 @@ const ago = (d: number) => addDaysToDate(TODAY, -d)
 let seq = 0
 const mk = (status: string, daysAgo: number | null, over: Row = {}): Row => ({
   id: `case-${++seq}`, status, event_date: daysAgo === null ? null : ago(daysAgo),
-  preview_datetime: null, estimate_amount: 0, auto_cancel: false, cancel_reason_id: null, cancel_note: null,
+  preview_datetime: null, estimate_amount: 0, auto_cancel: false, cancel_reason_id: null, cancel_note: null, cancelled_at: null,
   // 個人情報（取得・返却してはいけない）
   company: 'PII会社名', contact: 'PII担当者', phone: '090-0000-0000', email: 'pii@example.com', notes: 'PII備考',
   ...over,
@@ -195,7 +218,7 @@ describe('自動キャンセル: live の書込み（CASE 11, 29, 30, 31, 32）'
       cases: [mk('inquiry', 10, { id: 'a' }), mk('previewed', 20, { id: 'b' }), mk('previewed', 10, { id: 'c' }), mk('tentative', 10, { id: 'd' }), mk('inquiry', 40, { id: 'e' })],
       cancel_reason_master: [REASON_OK],
     })
-    const r = await runAutoCancel({ ...cancelArgs(db, { decision: 'live', mode: 'live' }), actorUserId: null })
+    const r = await runAutoCancel(cancelArgs(db, { decision: 'live', mode: 'live' }))
     assert.equal(r.body.processed, 2)
     const byId = Object.fromEntries(db.tables.cases.map((c) => [c.id as string, c]))
     assert.equal(byId.a.status, 'cancelled'); assert.equal(byId.a.auto_cancel, true); assert.equal(byId.a.cancel_reason_id, 'reason-auto')
@@ -203,10 +226,13 @@ describe('自動キャンセル: live の書込み（CASE 11, 29, 30, 31, 32）'
     assert.equal(byId.c.status, 'previewed', 'previewed 10日前は猶予内')
     assert.equal(byId.d.status, 'tentative', 'tentative は対象外')
     assert.equal(byId.e.status, 'inquiry', '40日前は遡り上限の外')
+    // 履歴は DB トリガー（模擬）が記録する。ランナーは case_history に書かない（二重履歴の防止）
     assert.deepEqual(db.tables.case_history.map((h) => [h.case_id, h.action_type, h.old_value, h.changed_by]).sort(), [
       ['a', 'auto_cancel', { status: 'inquiry' }, null],
       ['b', 'auto_cancel', { status: 'previewed' }, null],
     ])
+    assert.ok(!db.log.some((l) => l.table === 'case_history'), 'ランナーは case_history に触れない')
+    assert.deepEqual(db.tables.cases.filter((c) => c.cancelled_at).map((c) => c.id).sort(), ['a', 'b'], '打刻は更新された2件だけ')
   })
 
   test('多重防御: decision=live でも mode が live でなければ書込まない', async () => {
@@ -293,13 +319,27 @@ describe('自動キャンセル: live の書込み（CASE 11, 29, 30, 31, 32）'
     assert.ok(!JSON.stringify(r.body).includes('PII'))
   })
 
-  test('履歴の書込みに失敗しても、status の更新は巻き戻さない（historyRecorded=false）', async () => {
+  test('CASE 14, 16: 自動キャンセルの履歴は action_type=auto_cancel。件数が一致し、ランナーは case_history に1回も書かない', async () => {
+    const db = makeDb({ cases: many(7, () => mk('inquiry', 12)), cancel_reason_master: [REASON_OK] })
+    const r = await runAutoCancel(cancelArgs(db, { decision: 'live', mode: 'live' }))
+    assert.equal(r.body.processed, 7)
+    assert.equal(db.tables.case_history.length, 7, '更新件数 = 履歴件数（二重にならない）')
+    assert.ok(db.tables.case_history.every((h) => h.action_type === 'auto_cancel'))
+    assert.equal(db.tables.cases.filter((c) => c.cancelled_at).length, 7, '更新件数 = 打刻件数')
+    assert.equal(r.body.stampedCancelledAt, 7)
+    assert.equal(r.body.triggerWarning, undefined)
+    assert.ok(!db.log.some((l) => l.table === 'case_history'), 'ランナーの case_history への操作は 0 回')
+    assert.equal('historyRecorded' in r.body, false)
+  })
+
+  test('DB トリガーが無い（cancelled_at が打刻されない）環境では triggerWarning を返す。status 更新は巻き戻さない', async () => {
     const db = makeDb({ cases: [mk('inquiry', 10)], cancel_reason_master: [REASON_OK] })
-    db.hooks.failOn = { table: 'case_history', op: 'insert' }
+    db.hooks.trigger = false
     const r = await runAutoCancel(cancelArgs(db, { decision: 'live', mode: 'live' }))
     assert.equal(r.status, 200)
-    assert.equal(r.body.historyRecorded, false)
-    assert.equal(db.tables.cases[0].status, 'cancelled')
+    assert.equal(r.body.triggerWarning, true)
+    assert.equal(r.body.stampedCancelledAt, 0)
+    assert.equal(db.tables.case_history.length, 0, 'トリガーが無ければ履歴も無い（ランナーが代わりに書くことはしない）')
   })
 
   test('候補が0件なら、何も書かない', async () => {
@@ -333,7 +373,7 @@ describe('自動完了（CASE 34, 35）', () => {
     assert.doesNotMatch(db.log.map((l) => l.cols).join(','), /company|contact|phone|email|notes/)
   })
 
-  test('live: confirmed → done。confirmed_at には触れず、履歴(status_change)を書く', async () => {
+  test('live: confirmed → done。confirmed_at と cancelled_at には触れず、履歴(status_change)はトリガーが記録する (CASE 15)', async () => {
     const db = makeDb({ cases: [mk('confirmed', 3, { id: 'a', confirmed_at: '2026-08-01T00:00:00Z' }), mk('confirmed', 0, { id: 'b' })] })
     const r = await runAutoComplete(completeArgs(db, { decision: 'live', mode: 'live' }))
     assert.equal(r.body.processed, 1)
@@ -342,7 +382,9 @@ describe('自動完了（CASE 34, 35）', () => {
     assert.equal(db.tables.cases[1].status, 'confirmed')
     const updates = db.log.filter((l) => l.op === 'update')
     assert.deepEqual(updates.map((u) => u.payload), [{ status: 'done' }], '更新するのは status のみ')
-    assert.deepEqual(db.tables.case_history.map((h) => [h.case_id, h.action_type, h.old_value, h.new_value]), [['a', 'status_change', { status: 'confirmed' }, { status: 'done' }]])
+    assert.equal(db.tables.cases[0].cancelled_at, null, '自動完了は cancelled_at に触れない')
+    assert.ok(!db.log.some((l) => l.table === 'case_history'), 'ランナーは case_history に触れない')
+    assert.deepEqual(db.tables.case_history.map((h) => [h.case_id, h.action_type, h.old_value, h.new_value]), [['a', 'status_change', { status: 'confirmed' }, { status: 'done', auto_cancel: false }]])
   })
 
   test('CASE 35: SELECT の後で別 status（キャンセル等）に変えられた案件は、done に上書きされない', async () => {

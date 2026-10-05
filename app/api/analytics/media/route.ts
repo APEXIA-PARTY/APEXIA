@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   // マスタ全件取得（is_active=true のみ）
   const [{ data: masters }, { data: cases }] = await Promise.all([
     supabase.from('media_master').select('id,name,monthly_cost').eq('is_active', true).order('display_order'),
-    supabase.from('cases').select('id,status,auto_cancel,preview_datetime,estimate_amount,inquiry_date,company,media_id,cancel_reason_id,cancel_note'),
+    supabase.from('cases').select('id,status,auto_cancel,preview_datetime,cancelled_at,estimate_amount,inquiry_date,company,media_id,cancel_reason_id,cancel_note'),
   ])
 
   if (!masters || !cases) {

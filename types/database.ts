@@ -177,6 +177,10 @@ export interface Case {
   // クライアントからは直接指定不可（API側で自動セット）
   confirmed_at: string | null
 
+  // 最後に cancelled へ新規突入した正確な時刻（DB トリガーが打刻）。NULL = 旧データ・Excel取込（時刻不明）。
+  // クライアントからは直接指定不可。cancelled から離れても消さず、再キャンセルで上書きされる
+  cancelled_at: string | null
+
   // Google Calendar
   gcal_event_id: string | null
 
