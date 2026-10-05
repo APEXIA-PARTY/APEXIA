@@ -1,96 +1,88 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireAdmin } from '@/lib/auth/helpers'
-import { getJstTodayDateString } from '@/lib/utils/autoComplete'
+import { createCronAdminClient } from '@/lib/supabase/admin'
+import { requireAdmin, getCurrentUser } from '@/lib/auth/helpers'
+import { verifyCronAuth } from '@/lib/cron/auth'
+import { decideExecution, parseDryRunBody, parseDryRunParam, resolveCronMode } from '@/lib/cron/mode'
+import { runAutoComplete } from '@/lib/cron/autoCompleteRunner'
 
 /**
- * POST/GET /api/auto-complete
- * 確定(confirmed)案件のうち、開催日(event_date)を過ぎたものを
- * 自動的に「開催終了(done)」へ変更する。
+ * /api/auto-complete — 確定(confirmed)案件のうち、開催日(event_date)を過ぎたものを「開催終了(done)」へ変更
  *
  * 対象条件:
  *   - status = 'confirmed'
  *   - event_date IS NOT NULL
  *   - event_date < JST基準の今日（開催日当日は対象外、翌日以降が対象）
+ * 1回の書込み上限は30件。超える場合は、1件も書き込まず中止する。
  *
- * 既存の app/api/auto-cancel/route.ts（開催日超過による自動キャンセル）とは
- * 完全に独立した別ルート。auto-cancel のコード・設定には一切触れない。
+ * 動作モード（環境変数 CRON_MODE）: off / dry / live。未設定・不正は dry（書込みなし）。
+ * 既存の auto-cancel とは独立した別ルート（認証・モード・dry-run・競合対策は同じ方針）。
  *
  * 呼び出し元:
- *   - 管理者による手動実行（POST）
- *   - Vercel Cron Jobs（vercel.json で GET を設定）
+ *   GET  : Vercel Cron Jobs。CRON_SECRET の認証後、service role で実行。?dryRun=1 で集計のみ
+ *   POST : 管理者による手動実行（ログイン済み管理者のセッション）。{ "dryRun": true } で集計のみ
  */
+export const dynamic = 'force-dynamic'
 
 // GET: Vercel Cron Jobs から呼び出される
 export async function GET(request: NextRequest) {
-  // Vercel Cron からのリクエストのみ許可（本番環境）。既存 auto-cancel と同じ認証パターン。
-  const authHeader = request.headers.get('authorization')
-  if (process.env.NODE_ENV === 'production' && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  // 認証に失敗したら、DB クライアントを作る前に終了する（CRON_SECRET 未設定・空も失敗。フェイルクローズ）
+  const auth = verifyCronAuth(request.headers.get('authorization'), process.env.CRON_SECRET)
+  if (!auth.ok) {
+    console.error(`[auto-complete] cron 認証失敗: ${auth.reason}`)
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
   }
-  return runAutoComplete()
+
+  const mode = resolveCronMode(process.env.CRON_MODE)
+  const dryRunRequested = parseDryRunParam(new URL(request.url).searchParams.get('dryRun'))
+  const decision = decideExecution({ trigger: 'cron', mode, dryRunRequested })
+
+  if (decision === 'disabled') {
+    return NextResponse.json({ mode, disabled: true, message: 'CRON_MODE=off のため何も実行していません' })
+  }
+  if (decision === 'blocked') {
+    return NextResponse.json({ mode, blocked: true, message: '実行できません' }, { status: 403 })
+  }
+
+  let client
+  try {
+    client = createCronAdminClient() // service role。未設定なら例外（anon へのフォールバックはしない）
+  } catch (e) {
+    console.error('[auto-complete] cron 用 DB クライアントを作成できません:', e instanceof Error ? e.message : 'unknown')
+    return NextResponse.json({ message: 'cron の DB 接続が設定されていません' }, { status: 500 })
+  }
+
+  const result = await runAutoComplete({ client, decision, mode, actorUserId: null })
+  return NextResponse.json(result.body, { status: result.status })
 }
 
-// POST: 管理者による手動実行
-export async function POST(_request: NextRequest) {
+// POST: 管理者による手動実行（ログイン済み管理者のセッション。service role は使わない）
+export async function POST(request: NextRequest) {
   const { error } = await requireAdmin()
   if (error) return error
-  return runAutoComplete()
-}
 
-async function runAutoComplete(): Promise<NextResponse> {
+  let body: unknown = null
+  try {
+    body = await request.json()
+  } catch {
+    body = null
+  }
+
+  const mode = resolveCronMode(process.env.CRON_MODE)
+  const decision = decideExecution({ trigger: 'admin', mode, dryRunRequested: parseDryRunBody(body) })
+
+  if (decision === 'disabled') {
+    return NextResponse.json({ mode, disabled: true, liveEnabled: false, message: 'CRON_MODE=off のため自動開催終了は無効です' })
+  }
+  if (decision === 'blocked') {
+    return NextResponse.json(
+      { mode, blocked: true, liveEnabled: false, message: 'CRON_MODE が live ではないため、本処理は実行できません（対象の確認 dryRun のみ可能です）' },
+      { status: 403 }
+    )
+  }
+
   const supabase = await createClient()
-  const jstToday = getJstTodayDateString()
-
-  // UPDATE文そのものに status='confirmed' 等の条件を必ず含める
-  // （事前にSELECTで対象IDを確定させてからUPDATEする方式は採らない）。
-  // これにより、Cron実行の直前にスタッフが別ステータス（キャンセル等）へ
-  // 変更していた場合、その案件はこのWHERE条件に一致しなくなり上書きされない。
-  // updated_at は cases テーブルの既存トリガー（trg_cases_updated_at）が
-  // 自動更新するため、ここで明示的にセットする必要はない。
-  const { data: updated, error: updateError } = await supabase
-    .from('cases')
-    .update({ status: 'done' })
-    .eq('status', 'confirmed')
-    .not('event_date', 'is', null)
-    .lt('event_date', jstToday)
-    .select('id, company, event_date')
-
-  if (updateError) {
-    console.error('[auto-complete] 更新失敗:', updateError)
-    return NextResponse.json({ message: '自動開催終了処理に失敗しました' }, { status: 500 })
-  }
-
-  const updatedCases = updated ?? []
-  if (updatedCases.length === 0) {
-    return NextResponse.json({ processed: 0, message: '対象案件はありません' })
-  }
-
-  // 履歴を一括 INSERT する。新しい action_type は追加せず、既存の
-  // CHECK制約に含まれる 'status_change' を使用する（migration不要）。
-  const historyRows = updatedCases.map((c) => ({
-    case_id: c.id,
-    action_type: 'status_change' as const,
-    message: `開催日（${c.event_date}）経過による自動開催終了（確定→開催終了）`,
-    old_value: { status: 'confirmed' },
-    new_value: { status: 'done' },
-    changed_by: null, // システム実行
-  }))
-
-  const { error: historyError } = await supabase.from('case_history').insert(historyRows)
-
-  if (historyError) {
-    // status の更新自体は既に成功しているため、ここでロールバックはしない
-    // （案件を誤ってconfirmedへ巻き戻すような処理は行わない）。ログにのみ残す。
-    console.error('[auto-complete] 履歴挿入失敗（status更新は成功済み）:', historyError)
-  }
-
-  console.log(`[auto-complete] ${updatedCases.length}件を自動的に開催終了へ変更しました`)
-
-  return NextResponse.json({
-    processed: updatedCases.length,
-    cases: updatedCases.map((c) => ({ id: c.id, company: c.company, event_date: c.event_date })),
-    message: `${updatedCases.length}件を開催終了へ変更しました`,
-    historyRecorded: !historyError,
-  })
+  const user = await getCurrentUser()
+  const result = await runAutoComplete({ client: supabase, decision, mode, actorUserId: user?.id ?? null })
+  return NextResponse.json(result.body, { status: result.status })
 }
