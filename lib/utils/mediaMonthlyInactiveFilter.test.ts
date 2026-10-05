@@ -162,6 +162,23 @@ describe('excludeInactiveEmptyMediaRows', () => {
     assert.deepEqual(names(filtered), ['有効・実績なし', '有効・実績あり', 'どの媒体か不明', '（未設定）'])
   })
 
+  test('CASE 9〜11（下見の定義変更後）: 有効0件行は残す / 無効0件行は消す / 無効で実績ありは残す — 未来の下見予定は「実績」に数えない', () => {
+    const NOW = new Date('2026-10-05T03:00:00Z') // 2026-10-05 12:00 JST
+    const futureOnly = (id: string) => makeCase({ media_id: id, inquiry_date: '2025-12-01', preview_datetime: '2026-10-11T00:00:00+00:00' })
+    const donePreview = makeCase({ media_id: M_INACTIVE_USED.id, inquiry_date: '2025-12-01', preview_datetime: '2026-09-25T10:00:00+00:00' })
+    const masters = [M_ACTIVE_ZERO, M_INACTIVE_ZERO, M_INACTIVE_USED]
+    const rows = excludeInactiveEmptyMediaRows(
+      calcMediaMonthly([futureOnly(M_INACTIVE_ZERO.id), donePreview], masters, '2026', NOW),
+      masters
+    )
+    // 有効マスタ（実績0）は残る / 未来の予定しかない無効マスタは消える / 実施済みの下見がある無効マスタは残る
+    assert.deepEqual(names(rows), ['有効・実績なし', 'どの媒体か不明'])
+    // 時間が進んで予定日を過ぎれば、同じ入力で実績として表示される
+    const later = new Date('2026-10-12T03:00:00Z')
+    const rowsLater = excludeInactiveEmptyMediaRows(calcMediaMonthly([futureOnly(M_INACTIVE_ZERO.id)], masters, '2026', later), masters)
+    assert.deepEqual(names(rowsLater), ['有効・実績なし', 'test'])
+  })
+
   test('（未設定）行は常に残る。is_active が未取得のマスタは有効として扱う', () => {
     const cases = [makeCase({ media_id: null, inquiry_date: '2026-01-01' })]
     const result = run(cases, [{ id: 'm-x', name: 'is_active不明' }])
@@ -179,6 +196,11 @@ describe('media-monthly API の呼び出し', () => {
     assert.match(route, /from\('media_master'\)\.select\('id,name,is_active'\)/)
     assert.match(route, /excludeInactiveEmptyMediaRows\(\s*calcMediaMonthly\(/)
     assert.doesNotMatch(route, /\.(insert|update|delete|upsert)\(/)
+  })
+
+  test('calcMediaMonthly に現在日時（now）を渡している（下見を実施済みに限る）', () => {
+    assert.match(route, /const now = new Date\(\)/)
+    assert.match(route, /calcMediaMonthly\(cases as CaseRow\[\], masters, year, now\)/)
   })
 
   test('cases の取得項目は従来どおり（preview_datetime / confirmed_at を含む）', () => {

@@ -5,7 +5,7 @@
  */
 import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
-import { calcMediaMonthly, calcKpi, filterRevenueStatuses, REVENUE_STATUSES, UNASSIGNED_MEDIA_ID, UNASSIGNED_MEDIA_LABEL, type CaseRow } from './analytics.ts'
+import { calcMediaMonthly, calcKpi, isPreviewDone, filterRevenueStatuses, REVENUE_STATUSES, UNASSIGNED_MEDIA_ID, UNASSIGNED_MEDIA_LABEL, type CaseRow } from './analytics.ts'
 
 // テスト用の最小限のダミー案件を作るヘルパー
 function makeCase(overrides: Partial<CaseRow>): CaseRow {
@@ -140,6 +140,122 @@ describe('calcMediaMonthly', () => {
     const rowB = result.find((r) => r.id === 'media-b')!
     assert.equal(rowA.months[5].inquiry, 1)
     assert.equal(rowB.months[5].inquiry, 2)
+  })
+})
+
+// 認知経路 月別内訳の「下見」は、calcKpi と同じ「下見実施済み」（preview_datetime が現在日時以前）だけを数える。
+// 集計軸（下見日時の月に数える）は変えない。現在日時は固定して決定論的にテストする。
+describe('calcMediaMonthly: 下見は実施済みのみ（未来の下見予定を数えない）', () => {
+  // 固定の現在日時: 2026-10-05 12:00:00 JST（= 03:00:00 UTC）。保存値は日本時間の壁時計
+  const NOW = new Date('2026-10-05T03:00:00Z')
+  const withPreview = (preview: string | null, over: Partial<CaseRow> = {}) =>
+    makeCase({ media_id: 'media-a', inquiry_date: '2026-09-20', preview_datetime: preview, ...over })
+  const previewByMonth = (cases: CaseRow[], now: Date = NOW) =>
+    calcMediaMonthly(cases, [MEDIA_A], '2026', now).find((r) => r.id === 'media-a')!.months.map((m) => m.preview)
+  const sumPreview = (cases: CaseRow[], now: Date = NOW) => previewByMonth(cases, now).reduce((a, b) => a + b, 0)
+
+  test('CASE 1: 過去の preview_datetime は下見に含む（下見日時の月に数える）', () => {
+    const m = previewByMonth([withPreview('2026-09-25T10:00:00+00:00')])
+    assert.equal(m[8], 1) // 9月
+    assert.equal(sumPreview([withPreview('2026-09-25T10:00:00+00:00')]), 1)
+  })
+
+  test('CASE 2: 現在日時ちょうどは下見に含む', () => {
+    assert.equal(previewByMonth([withPreview('2026-10-05T12:00:00+00:00')])[9], 1) // 10月
+  })
+
+  test('CASE 3: 現在日時の1秒後は下見に含まない', () => {
+    assert.equal(sumPreview([withPreview('2026-10-05T12:00:01+00:00')]), 0)
+  })
+
+  test('CASE 4: 未来日は下見に含まない（未来の月にも数えない）', () => {
+    const m = previewByMonth([withPreview('2026-10-11T00:00:00+00:00'), withPreview('2026-12-20T15:00:00+00:00')])
+    assert.deepEqual(m, new Array(12).fill(0))
+  })
+
+  test('CASE 5: preview_datetime が null は下見に含まない', () => {
+    assert.equal(sumPreview([withPreview(null)]), 0)
+  })
+
+  test('CASE 6〜8: 未来の下見予定を除外しても、問合せ・確定件数は変わらない（売上の元になる確定の判定も同じ）', () => {
+    const base = [
+      withPreview('2026-09-25T10:00:00+00:00', { status: 'confirmed', confirmed_at: '2026-09-28T00:00:00Z', estimate_amount: 100000 }),
+      withPreview('2026-10-11T00:00:00+00:00', { status: 'confirmed', confirmed_at: '2026-10-02T00:00:00Z', estimate_amount: 200000 }), // 未来の下見予定を持つ確定
+      withPreview('2026-10-06T17:00:00+00:00', { inquiry_date: '2026-10-01' }),                                                          // 未来の下見予定のみ
+      withPreview(null, { inquiry_date: '2026-10-02' }),
+    ]
+    const withoutFuture = base.map((c) => ({ ...c, preview_datetime: isPreviewDone(c.preview_datetime, NOW) ? c.preview_datetime : null }))
+    const a = calcMediaMonthly(base, [MEDIA_A], '2026', NOW).find((r) => r.id === 'media-a')!
+    const b = calcMediaMonthly(withoutFuture, [MEDIA_A], '2026', NOW).find((r) => r.id === 'media-a')!
+    // 下見の列は、未来の予定を事前に取り除いた入力と同じになる
+    assert.deepEqual(a.months, b.months)
+    // 問合せ・確定（月別）は、下見の有無・予定の有無で変わらない
+    const inq = (r: typeof a) => r.months.map((m) => m.inquiry)
+    const cf = (r: typeof a) => r.months.map((m) => m.confirmed)
+    const noPreviewAtAll = calcMediaMonthly(base.map((c) => ({ ...c, preview_datetime: null })), [MEDIA_A], '2026', NOW).find((r) => r.id === 'media-a')!
+    assert.deepEqual(inq(a), inq(noPreviewAtAll))
+    assert.deepEqual(cf(a), cf(noPreviewAtAll))
+    assert.equal(inq(a).reduce((x, y) => x + y, 0), 4)
+    assert.equal(cf(a).reduce((x, y) => x + y, 0), 2)
+    // 売上（calcKpi）も、下見予定の有無で変わらない
+    assert.equal(calcKpi(base, NOW).revenue, calcKpi(base.map((c) => ({ ...c, preview_datetime: null })), NOW).revenue)
+    assert.equal(calcKpi(base, NOW).revenue, 300000)
+  })
+
+  test('CASE 12: JST の日付境界 — 保存値の壁時計を日本時間として判定する', () => {
+    // 2026-10-05 15:30 UTC = 2026-10-06 00:30 JST
+    const now = new Date('2026-10-05T15:30:00Z')
+    assert.equal(sumPreview([withPreview('2026-10-06T00:00:00+00:00')], now), 1, '10-06 00:00（日本時間）は実施済み')
+    assert.equal(sumPreview([withPreview('2026-10-06T01:00:00+00:00')], now), 0, '10-06 01:00 はまだ未来')
+    assert.equal(previewByMonth([withPreview('2026-10-06T00:00:00+00:00')], now)[9], 1)
+    // 月またぎ: 2026-09-30 15:00 UTC = 10-01 00:00 JST
+    const monthEnd = new Date('2026-09-30T15:00:00Z')
+    assert.equal(previewByMonth([withPreview('2026-10-01T00:00:00+00:00')], monthEnd)[9], 1)
+    assert.equal(sumPreview([withPreview('2026-10-01T00:00:01+00:00')], monthEnd), 0)
+  })
+
+  test('CASE 13: 実行環境のタイムゾーン（process.env.TZ）を変えても結果は同じ', () => {
+    const cases = [withPreview('2026-09-25T10:00:00+00:00'), withPreview('2026-10-05T12:00:00+00:00'), withPreview('2026-10-05T12:00:01+00:00'), withPreview(null)]
+    const original = process.env.TZ
+    const results: string[] = []
+    try {
+      for (const tz of ['UTC', 'Asia/Tokyo', 'America/Los_Angeles', 'Pacific/Auckland']) {
+        process.env.TZ = tz
+        results.push(JSON.stringify(previewByMonth(cases)))
+      }
+    } finally {
+      if (original === undefined) delete process.env.TZ
+      else process.env.TZ = original
+    }
+    for (const r of results) assert.equal(r, results[0])
+    assert.deepEqual(JSON.parse(results[0]), [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0])
+  })
+
+  test('CASE 14: calcKpi と media-monthly で、同一案件の「下見実施済み / 未実施」の判定が一致する', () => {
+    const previews = [null, '2026-04-01T10:00:00+00:00', '2026-10-05T11:59:59+00:00', '2026-10-05T12:00:00+00:00', '2026-10-05T12:00:01+00:00', '2026-10-11T00:00:00+00:00', '2026-12-31T23:59:59+00:00']
+    for (const now of [NOW, new Date('2026-10-05T02:59:59Z'), new Date('2026-10-05T15:30:00Z'), new Date('2027-01-01T00:00:00Z')]) {
+      for (const p of previews) {
+        const c = withPreview(p, { inquiry_date: '2026-03-01' })
+        const kpiDone = calcKpi([c], now).preview === 1
+        const monthlyDone = sumPreview([c], now) === 1
+        assert.equal(monthlyDone, kpiDone, `preview=${p} now=${now.toISOString()}`)
+        assert.equal(kpiDone, isPreviewDone(p, now))
+      }
+    }
+    // まとめて集計しても、実施済み件数（対象年のもの）の合計が一致する
+    const all = previews.map((p) => withPreview(p))
+    assert.equal(sumPreview(all, NOW), calcKpi(all, NOW).preview)
+  })
+
+  test('CASE 15: 現在時刻を固定すれば再現でき、now を省略した場合は実行時点（未来の予定は数えない）', () => {
+    const cases = [withPreview('2026-09-25T10:00:00+00:00'), withPreview('2026-10-11T00:00:00+00:00')]
+    assert.equal(sumPreview(cases, new Date('2026-10-05T03:00:00Z')), 1)
+    assert.equal(sumPreview(cases, new Date('2026-10-12T03:00:00Z')), 2, '時間が進めば同じ入力でも実施済みになる')
+    assert.equal(sumPreview(cases, new Date('2026-09-01T00:00:00Z')), 0)
+    // now 省略: 十分に未来の予定だけが 0 件になる（実行日に依存しない確認）
+    const farFuture = [withPreview('2099-01-01T00:00:00+00:00'), withPreview('2000-01-01T00:00:00+00:00', { inquiry_date: '2000-01-01' })]
+    const rows = calcMediaMonthly(farFuture, [MEDIA_A], '2099')
+    assert.equal(rows.find((r) => r.id === 'media-a')!.months.reduce((s, m) => s + m.preview, 0), 0)
   })
 })
 

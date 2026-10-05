@@ -209,7 +209,9 @@ export function getYears(cases: CaseRow[]): string[] {
 // ─── 月別×媒体別集計（イベント日方式） ─────────────────────────
 // 問合せ・下見・確定を、それぞれ「実際にその出来事が起きた月」でカウントする。
 // ・問合せ：inquiry_date の月（現ステータス問わず）
-// ・下見　：preview_datetime の月（現ステータス問わず。過去にキャンセルされても訪問の事実は残る）
+// ・下見　：preview_datetime の月（現ステータス問わず。過去にキャンセルされても訪問の事実は残る）。
+//   ただし calcKpi と同じ定義の「下見実施済み」（isPreviewDone: 現在日時以前）だけを数え、
+//   未来の下見予定は数えない（月別の集計軸＝下見日時の月は変えない）
 // ・確定　：confirmed_at の月。ただし「現ステータスが confirmed/done であること」も必須条件にする
 //   （confirmed_at は confirmed→cancelled でもクリアしないため、これがないと後でキャンセルされた
 //    案件まで確定件数に混入してしまう）
@@ -246,11 +248,13 @@ export const UNASSIGNED_MEDIA_LABEL = '（未設定）'
  * 案件配列を「媒体 × 月」でグルーピングし、問合せ・下見・確定の各件数を集計する。
  * mediaList には media_id が NULL の案件をまとめる行は含めない（このAPI呼び出し側の責務ではなく、
  * この関数が自動的に __none__ 行を末尾に追加する）。
+ * now: 下見実施済みの判定に使う現在日時（省略時は実行時点。テストでは固定日時を渡す）。calcKpi と同じ isPreviewDone を使う。
  */
 export function calcMediaMonthly(
   cases: CaseRow[],
   mediaList: { id: string; name: string }[],
-  year: string
+  year: string,
+  now: Date = new Date()
 ): MediaMonthlyRow[] {
   const monthsByMediaId = new Map<string, MediaMonthlyCell[]>()
 
@@ -270,8 +274,11 @@ export function calcMediaMonthly(
     const inquiryMonth = monthIndexInYear(c.inquiry_date, year)
     if (inquiryMonth !== null) months[inquiryMonth].inquiry++
 
-    const previewMonth = monthIndexInYear(c.preview_datetime, year)
-    if (previewMonth !== null) months[previewMonth].preview++
+    // 下見は「実施済み」（未来の予定を除く）のうち、下見日時の月に数える
+    if (isPreviewDone(c.preview_datetime, now)) {
+      const previewMonth = monthIndexInYear(c.preview_datetime, year)
+      if (previewMonth !== null) months[previewMonth].preview++
+    }
 
     if (REVENUE_STATUSES.includes(c.status)) {
       const confirmedMonth = monthIndexInYear(c.confirmed_at, year)

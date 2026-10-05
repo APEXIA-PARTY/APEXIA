@@ -7,7 +7,7 @@ import { calcMediaMonthly, excludeInactiveEmptyMediaRows, CaseRow } from '@/lib/
  * GET /api/analytics/media-monthly?year=2026
  * 認知経路（媒体）×月別の問合せ・下見・確定件数集計（イベント日方式）
  * ・問合せ：inquiry_date の月
- * ・下見　：preview_datetime の月
+ * ・下見　：preview_datetime の月（下見実施済み＝現在日時以前のみ。未来の下見予定は数えない。calcKpi と同じ定義）
  * ・確定　：confirmed_at の月（かつ現ステータスが confirmed/done であること）
  * ・読み取り専用（SELECTのみ）
  * ・year は必須
@@ -39,7 +39,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: 'データ取得に失敗しました' }, { status: 500 })
   }
 
-  const rows = excludeInactiveEmptyMediaRows(calcMediaMonthly(cases as CaseRow[], masters, year), masters)
+  const now = new Date()
+  const rows = excludeInactiveEmptyMediaRows(calcMediaMonthly(cases as CaseRow[], masters, year, now), masters)
 
   return NextResponse.json({ year, rows })
 }
