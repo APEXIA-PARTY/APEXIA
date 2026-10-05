@@ -69,10 +69,44 @@ export interface CaseRow {
   confirmed_at?: string | null
 }
 
+// ─── 下見の実施判定（preview_datetime と現在日時の比較）──────────────
+//
+// 下見日時（preview_datetime）の保存規約: スタッフが入力した日付・時刻（日本時間の壁時計）を、
+// タイムゾーン変換せずそのまま TIMESTAMPTZ の日付・時刻欄に保存している（DB の TimeZone は UTC。
+// 編集フォーム・詳細画面の表示も、文字列の日付・時刻部分をそのまま使う: formatPreviewDateTime 参照）。
+// 実データでも、保存値の時刻部分は営業時間帯（11〜19時）に集中している。
+// そのため「下見日時を迎えたか」は、保存値の日付・時刻を日本時間の壁時計として、
+// 日本時間の現在時刻と比較して判定する（Date.parse して瞬間として比較すると9時間ずれる）。
+// 日本は夏時間がないため、固定の +9時間で変換できる。
+
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000
+
+/** 現在日時 → 日本時間の壁時計 'YYYY-MM-DDTHH:mm:ss'（下見日時の壁時計と文字列で比較できる） */
+export function toJstWallClock(now: Date): string {
+  return new Date(now.getTime() + JST_OFFSET_MS).toISOString().slice(0, 19)
+}
+
+/** 保存された下見日時 → 壁時計 'YYYY-MM-DDTHH:mm:ss'（オフセット・小数秒は無視。日付のみは 00:00:00）。不正なら null */
+function previewWallClock(value: string | null | undefined): string | null {
+  if (!value) return null
+  const m = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/.exec(value)
+  if (!m) return null
+  return `${m[1]}T${m[2] ?? '00'}:${m[3] ?? '00'}:${m[4] ?? '00'}`
+}
+
+/**
+ * 下見実施済みか。preview_datetime があり、かつ現在日時（日本時間）以前であること。
+ * 未来の下見予定は実施済みに含めない。ちょうど現在日時のものは実施済みとして扱う。
+ */
+export function isPreviewDone(previewDatetime: string | null | undefined, now: Date = new Date()): boolean {
+  const wall = previewWallClock(previewDatetime)
+  return wall !== null && wall <= toJstWallClock(now)
+}
+
 export interface KpiResult {
   inquiry: number              // 問合せ件数
-  preview: number              // 下見件数
-  confirmed: number            // 確定件数
+  preview: number              // 下見件数（下見実施済み = preview_datetime が現在日時以前。未来の予定は含めない）
+  confirmed: number            // 確定件数（confirmed + done の全件。下見を経由しない直接確定も含む）
   cancelManual: number         // 手動キャンセル
   cancelAuto: number           // 自動キャンセル
   cancelBeforePreview: number  // 下見前キャンセル
@@ -80,19 +114,32 @@ export interface KpiResult {
   estimateTotal: number        // 見積合計（キャンセル除く）
   revenue: number              // 確定売上
   avgPrice: number             // 平均単価
-  previewRate: number          // 問合せ→下見率(%)
-  confirmRate: number          // 下見→確定率(%)
-  cvRate: number               // 問合せ→確定率(%)
+  previewConfirmed: number     // 下見経由確定（下見実施済み かつ confirmed/done）。confirmed = previewConfirmed + 下見なし確定
+  previewRate: number          // 問合せ→下見率(%) = 下見実施済み ÷ 問合せ
+  confirmRate: number          // 下見→確定率(%) = 下見経由確定 ÷ 下見実施済み（preview → confirmed の転換率。全確定 ÷ 下見ではない）
+  cvRate: number               // 問合せ→確定率(%) = 全確定 ÷ 問合せ
 }
 
-/** cases の配列からKPIを計算する */
-export function calcKpi(cases: CaseRow[]): KpiResult {
+/**
+ * cases の配列からKPIを計算する。
+ * now: 下見実施済みの判定に使う現在日時（省略時は実行時点。テストでは固定日時を渡す）。
+ *      下見の実施判定は isPreviewDone を参照（日本時間の壁時計で比較する）。
+ */
+export function calcKpi(cases: CaseRow[], now: Date = new Date()): KpiResult {
   const inquiry = cases.length
 
-  // 下見件数は preview_datetime（下見日時）が存在するかで判定する（status 不問）
-  const preview = cases.filter((c) => !!c.preview_datetime).length
+  // 下見件数 = 下見実施済み（preview_datetime が現在日時以前。status 不問。未来の下見予定は含めない）
+  const nowWall = toJstWallClock(now)
+  const isDone = (c: CaseRow): boolean => {
+    const wall = previewWallClock(c.preview_datetime)
+    return wall !== null && wall <= nowWall
+  }
+  const preview = cases.filter(isDone).length
 
   const confirmed = cases.filter((c) => REVENUE_STATUSES.includes(c.status)).length
+
+  // 下見経由確定 = 下見実施済み かつ 確定/開催終了
+  const previewConfirmed = cases.filter((c) => isDone(c) && REVENUE_STATUSES.includes(c.status)).length
 
   const cancelManual = cases.filter(
     (c) => c.status === CANCEL_STATUS && !c.auto_cancel
@@ -102,6 +149,7 @@ export function calcKpi(cases: CaseRow[]): KpiResult {
     (c) => c.status === CANCEL_STATUS && c.auto_cancel
   ).length
 
+  // 下見前/下見後キャンセルは、従来どおり preview_datetime の有無（予定を含む）で判定する
   const cancelBeforePreview = cases.filter(
     (c) => c.status === CANCEL_STATUS && !c.preview_datetime
   ).length
@@ -120,7 +168,7 @@ export function calcKpi(cases: CaseRow[]): KpiResult {
 
   const avgPrice = calcAvgPrice(revenue, confirmed)
   const previewRate = calcPercent(preview, inquiry)
-  const confirmRate = calcPercent(confirmed, preview)
+  const confirmRate = calcPercent(previewConfirmed, preview)
   const cvRate = calcPercent(confirmed, inquiry)
 
   return {
@@ -134,6 +182,7 @@ export function calcKpi(cases: CaseRow[]): KpiResult {
     estimateTotal,
     revenue,
     avgPrice,
+    previewConfirmed,
     previewRate,
     confirmRate,
     cvRate,

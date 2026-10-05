@@ -55,8 +55,9 @@ export default async function DashboardPage() {
   const rows = (allCases as CaseRow[]) ?? []
   const monthRows = filterByMonth(rows, thisMonth)
   const yearRows = filterByYear(rows, thisYear)
-  const mk = calcKpi(monthRows)
-  const yk = calcKpi(yearRows)
+  // 下見実施済みの判定を、同じリクエスト内で揃えるため now を渡す
+  const mk = calcKpi(monthRows, now)
+  const yk = calcKpi(yearRows, now)
   const autoTotal = monthRows.filter((c) => c.status === 'cancelled' && c.auto_cancel).length
 
   // 月別推移（当年）
@@ -64,7 +65,7 @@ export default async function DashboardPage() {
     const m = String(i + 1).padStart(2, '0')
     const key = `${thisYear}-${m}`
     const mc = filterByMonth(rows, key)
-    const kpi = calcKpi(mc)
+    const kpi = calcKpi(mc, now)
 
     return {
       label: `${i + 1}月`,
@@ -145,7 +146,7 @@ export default async function DashboardPage() {
         }
       />
 
-      {/* KPIカード（年間） */}
+      {/* KPIカード（当月） */}
       <div>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">当月KPI（{format(now, 'M')}月）</p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">

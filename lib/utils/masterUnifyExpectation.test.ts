@@ -81,9 +81,12 @@ describe('イベント分類: 企業イベント（企業飲食を統合）', ()
   const ins = make(96, { confirmed: 16, cancelled: 43, preview: 11, revenue: 18031030, category: 'ins' })
   const merged = [...ev, ...ins].map((c) => ({ ...c, event_category_id: '企業イベント' }))
 
-  test('統合後: 問合せ253 割合48% 下見44 下見率17% 確定44 確定割合48% 売上59,202,151 平均1,345,503 CV17% 確定率100%', () => {
+  test('統合後: 問合せ253 割合48% 下見44 下見率17% 確定44 確定割合48% 売上59,202,151 平均1,345,503 CV17%（下見→確定率は 下見経由確定 ÷ 下見）', () => {
     const k = calcKpi(merged)
-    assert.deepEqual([k.inquiry, k.preview, k.previewRate, k.confirmed, k.revenue, k.avgPrice, k.cvRate, k.confirmRate], [253, 44, 17, 44, 59202151, 1345503, 17, 100])
+    assert.deepEqual([k.inquiry, k.preview, k.previewRate, k.confirmed, k.revenue, k.avgPrice, k.cvRate], [253, 44, 17, 44, 59202151, 1345503, 17])
+    // 下見→確定率は「下見経由確定 ÷ 下見」（旧: 全確定 ÷ 下見 = 100% ではない）。架空データの下見と確定の重なり方に依存するため式で検証する
+    assert.equal(k.confirmRate, calcPercent(k.previewConfirmed, k.preview))
+    assert.ok(k.previewConfirmed <= k.preview && k.previewConfirmed <= k.confirmed)
     assert.equal(share(k.inquiry, TOTAL), 48)
     assert.equal(share(k.confirmed, TOTAL_CONFIRMED), 48)
   })

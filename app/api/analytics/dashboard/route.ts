@@ -21,14 +21,14 @@ export async function GET() {
   const rows: CaseRow[] = Array.isArray(allCases) ? (allCases as CaseRow[]) : []
   const monthRows = filterByMonth(rows, thisMonth)
   const yearRows = filterByYear(rows, thisYear)
-  const mkpi = calcKpi(monthRows)
-  const ykpi = calcKpi(yearRows)
+  const mkpi = calcKpi(monthRows, now)
+  const ykpi = calcKpi(yearRows, now)
 
   const monthlyTrend = Array.from({ length: 12 }, (_, i) => {
     const m = String(i + 1).padStart(2, '0')
     const key = `${thisYear}-${m}`
     const mc = filterByMonth(rows, key)
-    const kpi = calcKpi(mc)
+    const kpi = calcKpi(mc, now)
     return { month: key, label: `${i + 1}月`, inquiry: kpi.inquiry, confirmed: kpi.confirmed, revenue: kpi.revenue }
   })
 

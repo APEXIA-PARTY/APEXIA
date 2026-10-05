@@ -257,7 +257,7 @@ function MonthlyTab({ year, onYearChange, years }: { year: string; onYearChange:
               <TH right>ｷｬﾝ(手)</TH><TH right>ｷｬﾝ(自)</TH>
               <TH right>下見前ｷｬﾝ</TH><TH right>下見後ｷｬﾝ</TH>
               <TH right>見積合計</TH><TH right>確定売上</TH><TH right>平均単価</TH>
-              <TH right>→下見率</TH><TH right>→確定率</TH>
+              <TH right>→下見率</TH><TH right>問合せ→確定率</TH><TH right>下見→確定率</TH>
             </tr></thead>
             <tbody className="divide-y divide-border">
               {monthly.filter((m: any) => m.inquiry > 0 || m.cancelManual > 0 || m.cancelAuto > 0).map((m: any) => (
@@ -275,6 +275,7 @@ function MonthlyTab({ year, onYearChange, years }: { year: string; onYearChange:
                   <TD right>{m.avgPrice > 0 ? formatYenFull(m.avgPrice) : '—'}</TD>
                   <TD right>{fmtPct(m.previewRate)}</TD>
                   <TD right bold>{fmtPct(m.cvRate)}</TD>
+                  <TD right>{fmtPct(m.confirmRate)}</TD>
                 </tr>
               ))}
               {/* 合計行 */}
@@ -292,6 +293,7 @@ function MonthlyTab({ year, onYearChange, years }: { year: string; onYearChange:
                 <TD right>{data.total.avgPrice > 0 ? formatYenFull(data.total.avgPrice) : '—'}</TD>
                 <TD right>{fmtPct(data.total.previewRate)}</TD>
                 <TD right bold>{fmtPct(data.total.cvRate)}</TD>
+                <TD right>{fmtPct(data.total.confirmRate)}</TD>
               </tr>)}
 
               {/* 平均行: データが存在する月のみで列ごとに独立して算出 */}
@@ -319,10 +321,13 @@ function MonthlyTab({ year, onYearChange, years }: { year: string; onYearChange:
                 const totalInquiry   = activeMonths.reduce((s: number, m: any) => s + (m.inquiry   as number), 0)
                 const totalPreview   = activeMonths.reduce((s: number, m: any) => s + (m.preview   as number), 0)
                 const totalConfirmed = activeMonths.reduce((s: number, m: any) => s + (m.confirmed as number), 0)
+                const totalPreviewConfirmed = activeMonths.reduce((s: number, m: any) => s + ((m.previewConfirmed ?? 0) as number), 0)
                 const totalRevenue   = activeMonths.reduce((s: number, m: any) => s + (m.revenue   as number), 0)
 
                 const avgPreviewRate = totalInquiry > 0 ? Math.round((totalPreview   / totalInquiry) * 100) : 0
                 const avgCvRate      = totalInquiry > 0 ? Math.round((totalConfirmed / totalInquiry) * 100) : 0
+                // 下見→確定率 = 下見経由確定の合計 ÷ 下見実施済みの合計
+                const avgConfirmRate = totalPreview > 0 ? Math.round((totalPreviewConfirmed / totalPreview) * 100) : 0
 
                 // 平均単価: 合計確定売上 ÷ 合計確定件数
                 const avgUnitPrice = totalConfirmed > 0 ? Math.round(totalRevenue / totalConfirmed) : 0
@@ -346,6 +351,7 @@ function MonthlyTab({ year, onYearChange, years }: { year: string; onYearChange:
                     <TD right>{avgUnitPrice > 0 ? formatYenFull(avgUnitPrice) : '—'}</TD>
                     <TD right>{fmtPct(avgPreviewRate)}</TD>
                     <TD right bold>{fmtPct(avgCvRate)}</TD>
+                    <TD right>{fmtPct(avgConfirmRate)}</TD>
                   </tr>
                 )
               })()}
@@ -1058,11 +1064,12 @@ export default function AnalyticsPage() {
             <KPI label="下見"        value={fmtNum(yk.preview)}                             icon={Calendar}    color="text-purple-600" />
             <KPI label="→下見率"    value={fmtPct(yk.previewRate)}                         icon={TrendingUp}  color="text-purple-600" />
             <KPI label="確定"        value={fmtNum(yk.confirmed)}                           icon={TrendingUp}  color="text-green-700" />
+            <KPI label="問合せ→確定率" value={fmtPct(yk.cvRate)}                            icon={TrendingUp}  color="text-orange-600" />
+            <KPI label="下見→確定率" value={fmtPct(yk.confirmRate)}                         icon={TrendingUp}  color="text-orange-500" />
             <KPI label="下見前ｷｬﾝ"  value={fmtNum(yk.cancelBeforePreview)}                 icon={XCircle}     color="text-red-400" />
             <KPI label="下見後ｷｬﾝ"  value={fmtNum(yk.cancelAfterPreview)}                  icon={XCircle}     color="text-red-600" />
             <KPI label="確定売上"    value={formatManShort(yk.revenue)}                        icon={DollarSign}  color="text-green-700" />
             <KPI label="平均単価"    value={yk.avgPrice > 0 ? formatManShort(yk.avgPrice) : '—'} icon={BarChart2} color="text-blue-600" />
-            <KPI label="→確定率"    value={fmtPct(yk.cvRate)}                              icon={TrendingUp}  color="text-orange-600" />
             <KPI label="見積合計"    value={formatManShort(yk.estimateTotal)}                  icon={DollarSign}  color="text-green-700" />
             <KPI label="自動ｷｬﾝ累計" value={fmtNum(summary?.kpi?.thisMonth?.autoCancelTotal ?? 0)} icon={XCircle} color="text-red-800" />
           </div>
