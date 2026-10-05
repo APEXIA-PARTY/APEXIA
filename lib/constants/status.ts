@@ -89,13 +89,22 @@ export const AUTO_CANCEL_TARGET_STATUSES: CaseStatus[] = [
 /**
  * 確認手続きの選択肢
  */
-export const FORM_STATUS_OPTIONS = ['未対応', '済み'] as const
+/** 申込みフォーム（application_form_status）: 未対応 → 送付済み → 済み（遷移の強制はしない） */
+export const FORM_STATUS_OPTIONS = ['未対応', '送付済み', '済み'] as const
 /** 申込み金（deposit_status）のみ 3 値（保存値は表示ラベルと同じ文字列。DB の CHECK 制約も同じ値） */
 export const DEPOSIT_STATUS_OPTIONS = ['未対応', '請求書送付済み', '済み'] as const
 /** 残額支払い（remaining_payment_status）も 3 値（保存値は表示ラベルと同じ文字列。DB の CHECK 制約も同じ値） */
 export const REMAINING_PAYMENT_STATUS_OPTIONS = ['未対応', '請求書送付済み', '済み'] as const
-export const DELIVERY_STATUS_OPTIONS = ['未対応', '済み'] as const
-export const INVOICE_STATUS_OPTIONS = ['未対応', '発行依頼', '送付済み', '振り込み済み'] as const
+/** 搬入出届（delivery_notice_status）: 申込みフォームと同じ 3 値 */
+export const DELIVERY_STATUS_OPTIONS = ['未対応', '送付済み', '済み'] as const
+/**
+ * 請求書（invoice_status）の「通常の選択肢」。「発行依頼」は新たに選べない。
+ * ただし DB の CHECK 制約と Zod は当面 4 値のまま受け入れる（既存案件の「発行依頼」との互換性維持）。
+ * 既存値が「発行依頼」の案件だけ、画面ではその値を「（既存値）」として表示する（lib/cases/procedure.ts の buildSelectOptions）。
+ */
+export const INVOICE_STATUS_OPTIONS = ['未対応', '送付済み', '振り込み済み'] as const
+/** DB / Zod は受け入れるが、新規には選べない請求書の旧値 */
+export const INVOICE_STATUS_LEGACY_VALUES = ['発行依頼'] as const
 export const PAYMENT_METHOD_OPTIONS = [
   '当日キャッシュレス',
   '当日現金',

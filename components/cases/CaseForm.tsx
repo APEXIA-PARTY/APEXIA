@@ -7,7 +7,8 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { caseFormSchema, CaseFormValues } from '@/lib/validations/case'
-import { STATUS_LIST, INVOICE_STATUS_OPTIONS, PAYMENT_METHOD_OPTIONS, DEPOSIT_STATUS_OPTIONS, REMAINING_PAYMENT_STATUS_OPTIONS } from '@/lib/constants/status'
+import { STATUS_LIST, FORM_STATUS_OPTIONS, DELIVERY_STATUS_OPTIONS, INVOICE_STATUS_OPTIONS, PAYMENT_METHOD_OPTIONS, DEPOSIT_STATUS_OPTIONS, REMAINING_PAYMENT_STATUS_OPTIONS } from '@/lib/constants/status'
+import { buildSelectOptions, legacyOptionLabel } from '@/lib/cases/procedure'
 import { Case } from '@/types/database'
 import { shouldClearSubcategoryOnCategoryChange } from '@/lib/cases/eventCategory'
 import { PreviewDateTimeSelect, MINUTES, HOURS } from '@/components/cases/PreviewDateTimeSelect'
@@ -168,6 +169,7 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
 
   const eventCategoryField = register('event_category_id')
   const watchStatus = watch('status')
+  const { legacy: invoiceLegacy } = buildSelectOptions(INVOICE_STATUS_OPTIONS, watch('invoice_status'))
   const watchCategoryId = watch('event_category_id')
   const watchSubcategoryId = watch('event_subcategory_id')
 
@@ -622,15 +624,17 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
           <div>
             <label className={lbl}>申込みフォーム</label>
             <select {...register('application_form_status')} className={sel}>
-              <option value="未対応">未対応</option>
-              <option value="済み">済み</option>
+              {FORM_STATUS_OPTIONS.map((v) => (
+                <option key={v} value={v}>{v}</option>
+              ))}
             </select>
           </div>
           <div>
             <label className={lbl}>搬入出届</label>
             <select {...register('delivery_notice_status')} className={sel}>
-              <option value="未対応">未対応</option>
-              <option value="済み">済み</option>
+              {DELIVERY_STATUS_OPTIONS.map((v) => (
+                <option key={v} value={v}>{v}</option>
+              ))}
             </select>
           </div>
           <div>
@@ -639,6 +643,8 @@ export function CaseForm({ initialData, isEdit = false }: CaseFormProps) {
               {INVOICE_STATUS_OPTIONS.map((v) => (
                 <option key={v} value={v}>{v}</option>
               ))}
+              {/* 旧値「発行依頼」の既存案件だけ、その値が選ばれている間は「既存値」として表示する。別の値を選ぶと消え、新規には選べない */}
+              {invoiceLegacy && <option value={invoiceLegacy}>{legacyOptionLabel(invoiceLegacy)}</option>}
             </select>
           </div>
           <div>

@@ -68,15 +68,15 @@ describe('validatePreviewDateTime', () => {
 })
 
 describe('validateProcedureSelect', () => {
-  test('申込みフォーム: 未対応 / 済み の 2 値のみ許可（請求書送付済みは不可）', () => {
-    for (const v of ['未対応', '済み']) {
+  test('申込みフォーム: 未対応 / 送付済み / 済み の 3 値を許可（請求書送付済みは不可）', () => {
+    for (const v of ['未対応', '送付済み', '済み']) {
       assert.deepEqual(validateProcedureSelect('application_form_status', v), { ok: true, value: v })
     }
     assert.equal(validateProcedureSelect('application_form_status', '請求書送付済み').ok, false)
   })
 
-  test('申込みフォーム: 2 値以外（空・他項目の値）は不可', () => {
-    for (const v of ['', '請求書送付済み', '発行依頼', '送付済み', '振り込み済み', '済']) {
+  test('申込みフォーム: 3 値以外（空・他項目の値）は不可', () => {
+    for (const v of ['', '請求書送付済み', '発行依頼', '振り込み済み', '済']) {
       assert.equal(validateProcedureSelect('application_form_status', v).ok, false, v)
     }
   })
@@ -105,14 +105,13 @@ describe('validateProcedureSelect', () => {
     }
   })
 
-  test('搬入出届は従来どおり 未対応・済み のみ（請求書送付済みは不可）', () => {
+  test('搬入出届: 未対応 / 送付済み / 済み の 3 値を許可（請求書送付済みは不可）', () => {
     const f = 'delivery_notice_status'
-    assert.equal(validateProcedureSelect(f, '未対応').ok, true)
-    assert.equal(validateProcedureSelect(f, '済み').ok, true)
-    assert.equal(validateProcedureSelect(f, '請求書送付済み').ok, false, f)
+    for (const v of ['未対応', '送付済み', '済み']) assert.equal(validateProcedureSelect(f, v).ok, true, v)
+    for (const v of ['', '請求書送付済み', '発行依頼', '振り込み済み', '済']) assert.equal(validateProcedureSelect(f, v).ok, false, v)
   })
 
-  test('請求書は従来の 4 値', () => {
+  test('請求書: DB / Zod は当面 4 値のまま受け入れる（既存の「発行依頼」との互換性。選択肢からは外れる）', () => {
     for (const v of ['未対応', '発行依頼', '送付済み', '振り込み済み']) {
       assert.equal(validateProcedureSelect('invoice_status', v).ok, true, v)
     }
@@ -127,9 +126,9 @@ describe('validateProcedureSelect', () => {
 })
 
 describe('「請求書送付済み」は申込み金（deposit_status）のみ（Zod / 定数 / 型 / 画面 / migration）', () => {
-  test('案件フォームの Zod: 申込みフォームは 2 値（請求書送付済みは不可）、既定値は 未対応', () => {
+  test('案件フォームの Zod: 申込みフォームは 3 値（請求書送付済みは不可）、既定値は 未対応', () => {
     const f = caseFormSchema.shape.application_form_status
-    for (const v of ['未対応', '済み']) {
+    for (const v of ['未対応', '送付済み', '済み']) {
       const r = f.safeParse(v)
       assert.ok(r.success, v)
       assert.equal(r.data, v)
@@ -160,10 +159,11 @@ describe('「請求書送付済み」は申込み金（deposit_status）のみ�
     assert.equal(f.safeParse(undefined).data, '未対応')
   })
 
-  test('他の確認手続き項目（搬入出届）は 2 値のまま', () => {
+  test('案件フォームの Zod: 搬入出届も 3 値（請求書送付済みは不可）、既定値は 未対応', () => {
     const k = 'delivery_notice_status'
+    for (const v of ['未対応', '送付済み', '済み']) assert.equal(caseFormSchema.shape[k].safeParse(v).success, true, v)
     assert.equal(caseFormSchema.shape[k].safeParse('請求書送付済み').success, false, k)
-    assert.equal(caseFormSchema.shape[k].safeParse('済み').success, true, k)
+    assert.equal(caseFormSchema.shape[k].safeParse(undefined).data, '未対応')
   })
 
   test('定数・型・案件編集フォーム: 申込み金と残額支払いが 3 値で、APPLICATION_FORM_STATUS_OPTIONS は存在しない', () => {
@@ -171,7 +171,7 @@ describe('「請求書送付済み」は申込み金（deposit_status）のみ�
     assert.ok(status.includes("DEPOSIT_STATUS_OPTIONS = ['未対応', '請求書送付済み', '済み']"))
     assert.ok(!status.includes('APPLICATION_FORM_STATUS_OPTIONS'))
     const types = read('types/database.ts')
-    assert.ok(types.includes("ApplicationFormStatus = '未対応' | '済み'"))
+    assert.ok(types.includes("ApplicationFormStatus = '未対応' | '送付済み' | '済み'"))
     assert.ok(types.includes("DepositStatus = '未対応' | '請求書送付済み' | '済み'"))
     assert.ok(types.includes("RemainingPaymentStatus = '未対応' | '請求書送付済み' | '済み'"))
     assert.ok(status.includes("REMAINING_PAYMENT_STATUS_OPTIONS = ['未対応', '請求書送付済み', '済み']"))
@@ -181,13 +181,16 @@ describe('「請求書送付済み」は申込み金（deposit_status）のみ�
     assert.ok(!form.includes('APPLICATION_FORM_STATUS_OPTIONS'))
   })
 
-  test('詳細画面: 青いピル（progressValues）は申込み金と残額支払いの行だけに付く', () => {
+  test('詳細画面: 青いピル（progressValues）は 申込みフォーム・搬入出届（送付済み）と 申込み金・残額支払い（請求書送付済み）の行に付く', () => {
     const src = read('components/cases/CaseDetail/Procedure.tsx')
     const lines = src.split('\n').filter((l) => l.includes('progressValues: ['))
-    assert.equal(lines.length, 2)
-    assert.ok(lines.some((l) => l.includes("field: 'deposit_status'")))
-    assert.ok(lines.some((l) => l.includes("field: 'remaining_payment_status'")))
-    assert.ok(!lines.some((l) => l.includes("field: 'application_form_status'")))
+    assert.equal(lines.length, 4)
+    const progress = (field: string) => lines.find((l) => l.includes(`field: '${field}'`)) ?? ''
+    assert.ok(progress('application_form_status').includes("progressValues: ['送付済み']"))
+    assert.ok(progress('delivery_notice_status').includes("progressValues: ['送付済み']"))
+    assert.ok(progress('deposit_status').includes("progressValues: ['請求書送付済み']"))
+    assert.ok(progress('remaining_payment_status').includes("progressValues: ['請求書送付済み']"))
+    assert.ok(!lines.some((l) => l.includes("field: 'invoice_status'")), '請求書の行には付かない')
     assert.ok(!src.includes('APPLICATION_FORM_STATUS_OPTIONS'))
   })
 

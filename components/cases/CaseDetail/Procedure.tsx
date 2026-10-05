@@ -20,6 +20,8 @@ import {
   toPreviewInputValue,
   validatePreviewDateTime,
   validateProcedureSelect,
+  buildSelectOptions,
+  legacyOptionLabel,
   type ProcedureField,
   type ProcedureSelectField,
 } from '@/lib/cases/procedure'
@@ -227,9 +229,9 @@ export function CaseDetailProcedure({ caseData: c, caseId, isEditable = false }:
     const isEditing = editing?.field === field
 
     if (isEditing) {
-      const options = SELECT_OPTIONS[field]
-      // 旧データ（選択肢に無い現在値）も選べるように残す
-      const legacy = current && !options.includes(current) ? current : null
+      // 現在の選択が通常の選択肢に無い値（請求書の旧値「発行依頼」など）のときだけ、その値を「既存値」として 1 つ表示する。
+      // 別の値を選ぶと消えるので、一度変更した後は旧値へ戻せない
+      const { values: options, legacy } = buildSelectOptions(SELECT_OPTIONS[field], draft)
       return (
         <Row label={label} editing>
           <select
@@ -243,7 +245,7 @@ export function CaseDetailProcedure({ caseData: c, caseId, isEditable = false }:
             {options.map((v) => (
               <option key={v} value={v}>{v}</option>
             ))}
-            {legacy && <option value={legacy}>{legacy}（旧）</option>}
+            {legacy && <option value={legacy}>{legacyOptionLabel(legacy)}</option>}
           </select>
           {saveCancelButtons(() => handleSaveSelect(field))}
         </Row>
@@ -327,8 +329,8 @@ export function CaseDetailProcedure({ caseData: c, caseId, isEditable = false }:
             {values.estimate_amount > 0 ? formatCurrency(values.estimate_amount) : '—'}
           </span>
         </Row>
-        {SelectRow({ field: 'application_form_status', okValues: ['済み'] })}
-        {SelectRow({ field: 'delivery_notice_status', okValues: ['済み'] })}
+        {SelectRow({ field: 'application_form_status', okValues: ['済み'], progressValues: ['送付済み'] })}
+        {SelectRow({ field: 'delivery_notice_status', okValues: ['済み'], progressValues: ['送付済み'] })}
         {SelectRow({ field: 'deposit_status', okValues: ['済み'], progressValues: ['請求書送付済み'] })}
         {SelectRow({ field: 'remaining_payment_status', okValues: ['済み'], progressValues: ['請求書送付済み'] })}
         {SelectRow({ field: 'invoice_status', okValues: ['振り込み済み', '送付済み'] })}

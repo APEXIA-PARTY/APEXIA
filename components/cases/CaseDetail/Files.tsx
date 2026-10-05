@@ -14,6 +14,7 @@ import {
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils/cn'
 import { formatDateTime } from '@/lib/utils/format'
+import { processLayoutDrop } from '@/lib/cases/layoutFiles'
 
 type FileType = '見積書' | '請求書' | '進行表' | 'レイアウト図' | 'その他'
 const FILE_TYPES: FileType[] = ['見積書', '請求書', '進行表', 'レイアウト図', 'その他']
@@ -64,6 +65,7 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
   const dropRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const layoutInputRef = useRef<HTMLInputElement>(null)
+  const layoutDropRef = useRef<HTMLDivElement>(null)
 
   const fetchFiles = useCallback(async () => {
     const res = await fetch(`/api/cases/${caseId}/files`)
@@ -138,7 +140,7 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
     window.open(url, '_blank', 'noopener,noreferrer')
   }
 
-  const uploadFiles = async (fileList: FileList, forceType?: FileType) => {
+  const uploadFiles = async (fileList: FileList | File[], forceType?: FileType) => {
     setUploading(true)
     const errors: string[] = []
 
@@ -366,14 +368,44 @@ export function CaseFilesSection({ caseId, isEditable }: Props) {
                 className="hidden"
                 onChange={(e) => e.target.files && void uploadFiles(e.target.files, 'レイアウト図')}
               />
-              <button
+              {/* クリックでファイル選択 / ドラッグ＆ドロップでアップロード（⑦ 添付ファイルと同じ操作）。
+                  ドロップでは accept 属性が効かないため、画像・PDF 以外は processLayoutDrop が除外して通知する */}
+              <div
+                ref={layoutDropRef}
+                role="button"
+                tabIndex={0}
+                aria-disabled={uploading}
+                className={cn(
+                  'flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border py-5 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5',
+                  uploading && 'pointer-events-none opacity-50'
+                )}
                 onClick={() => layoutInputRef.current?.click()}
-                disabled={uploading}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border py-5 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5 disabled:opacity-50"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    layoutInputRef.current?.click()
+                  }
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  layoutDropRef.current?.classList.add('border-primary', 'bg-primary/5')
+                }}
+                onDragLeave={() => {
+                  layoutDropRef.current?.classList.remove('border-primary', 'bg-primary/5')
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  layoutDropRef.current?.classList.remove('border-primary', 'bg-primary/5')
+                  if (uploading || !e.dataTransfer.files.length) return
+                  processLayoutDrop(Array.from(e.dataTransfer.files), {
+                    upload: (files, fileType) => void uploadFiles(files, fileType),
+                    notifyRejected: (message) => toast.error(message),
+                  })
+                }}
               >
                 <ImageIcon className="h-4 w-4" />
-                レイアウト図を追加（画像・PDF対応）
-              </button>
+                レイアウト図を追加（画像・PDF対応・ドラッグ＆ドロップ可）
+              </div>
             </>
           )}
 

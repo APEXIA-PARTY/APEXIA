@@ -61,3 +61,21 @@ export function validateProcedureSelect(field: ProcedureSelectField, input: stri
   if (!parsed.success) return { ok: false, message: '選択した値が正しくありません' }
   return { ok: true, value: input }
 }
+
+/**
+ * プルダウンに並べる選択肢を作る。
+ * 現在の入力値が通常の選択肢に無い（例: 請求書の旧値「発行依頼」）ときだけ、その値を「既存値」として 1 つ追加する。
+ *   ・既存値は、その値が選ばれている間だけ表示する。別の値を選んだ後は選択肢から消える（旧値へは戻せない）
+ *   ・DB / Zod は旧値を受け入れ続けるので、旧値のまま他の項目を保存しても失敗しない
+ */
+export function buildSelectOptions(
+  options: readonly string[],
+  currentValue: string | null | undefined
+): { values: readonly string[]; legacy: string | null } {
+  const current = currentValue ?? ''
+  const legacy = current !== '' && !options.includes(current) ? current : null
+  return { values: options, legacy }
+}
+
+/** 既存値の表示ラベル（例: 発行依頼（既存値）） */
+export const legacyOptionLabel = (value: string): string => `${value}（既存値）`
