@@ -786,6 +786,17 @@ function OptionsTab() {
   )
 }
 
+/** 先行期間: 中央値の表示（例: 124日（約4.1ヶ月））。0件は — */
+const fmtLeadMedian = (days: number | null | undefined, months: number | null | undefined) =>
+  days === null || days === undefined ? '—' : `${days}日（約${months}ヶ月）`
+
+/** 集計途中（当月・未来月）の印 */
+const PartialBadge = () => (
+  <span className="ml-1.5 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 whitespace-nowrap">
+    集計途中
+  </span>
+)
+
 function LeadTimeTab() {
   const [data, setData]   = useState<any>(null)
   const [year, setYear]   = useState(new Date().getFullYear().toString())
@@ -806,6 +817,8 @@ function LeadTimeTab() {
   const total     = data.total ?? { count: 0, avgDays: 0, avgMonths: 0 }
   const maxMonths = Math.max(...(data.rows ?? []).map((r: any) => r.avgMonths), 0.1)
   const hasData   = (data.rows ?? []).some((r: any) => r.count > 0)
+  // 集計途中（当月・未来月）の月が、件数のある行の中に含まれるか
+  const hasPartial = (data.rows ?? []).some((r: any) => r.isPartial && r.count > 0)
 
   return (
     <div className="space-y-4">
@@ -824,7 +837,7 @@ function LeadTimeTab() {
       </div>
 
       {/* 年間平均カード */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-lg border border-border bg-card p-4 text-center">
           <p className="text-xs text-muted-foreground">年間対象件数</p>
           <p className="mt-1 text-2xl font-bold tabular-nums">
@@ -845,7 +858,25 @@ function LeadTimeTab() {
             {total.count > 0 && <span className="text-sm font-normal text-muted-foreground ml-1">ヶ月前</span>}
           </p>
         </div>
+        <div className="rounded-lg border border-border bg-card p-4 text-center">
+          <p className="text-xs text-muted-foreground">年間中央値</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums">
+            {total.count > 0 && total.medianDays != null ? total.medianDays : '—'}
+            {total.count > 0 && total.medianDays != null && <span className="text-sm font-normal text-muted-foreground ml-1">日</span>}
+          </p>
+          {total.count > 0 && total.medianMonths != null && (
+            <p className="text-[11px] text-muted-foreground">約{total.medianMonths}ヶ月</p>
+          )}
+        </div>
       </div>
+
+      {/* 集計途中の注記（当月・未来月がある年のみ） */}
+      {hasPartial && (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          集計途中：今後、開催日に近い問い合わせが追加されるため、平均値が変動する可能性があります。
+          平均だけでなく、中央値・件数もあわせてご覧ください。
+        </p>
+      )}
 
       {!hasData ? (
         <div className="rounded-lg border border-border bg-card p-8 text-center text-sm text-muted-foreground">
@@ -867,9 +898,13 @@ function LeadTimeTab() {
                         style={{ width: `${Math.round((r.avgMonths / maxMonths) * 100)}%` }}
                       />
                     </div>
-                    <span className="w-20 text-right text-xs font-medium tabular-nums">
-                      {r.avgMonths}ヶ月前
+                    <span className="w-28 text-right text-xs tabular-nums">
+                      <span className="block font-medium">{r.avgMonths}ヶ月前</span>
+                      <span className="block text-[10px] text-muted-foreground">
+                        中央値 {r.medianMonths != null ? `${r.medianMonths}` : '—'}ヶ月・{r.count}件
+                      </span>
                     </span>
+                    {r.isPartial && <PartialBadge />}
                   </div>
                 </div>
               ))}
@@ -886,6 +921,7 @@ function LeadTimeTab() {
                     <TH right>件数</TH>
                     <TH right>平均日数</TH>
                     <TH right>平均先行月数</TH>
+                    <TH right>中央値</TH>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -894,12 +930,13 @@ function LeadTimeTab() {
                       'hover:bg-muted/20',
                       r.count === 0 ? 'opacity-40' : ''
                     )}>
-                      <TD>{r.label}</TD>
+                      <TD>{r.label}{r.isPartial && r.count > 0 && <PartialBadge />}</TD>
                       <TD right>{r.count > 0 ? `${r.count}件` : '—'}</TD>
                       <TD right>{r.count > 0 ? `${r.avgDays}日` : '—'}</TD>
                       <TD right bold={r.count > 0}>
                         {r.count > 0 ? `${r.avgMonths}ヶ月前` : '—'}
                       </TD>
+                      <TD right>{r.count > 0 ? fmtLeadMedian(r.medianDays, r.medianMonths) : '—'}</TD>
                     </tr>
                   ))}
                   {/* 合計行 */}
@@ -909,12 +946,17 @@ function LeadTimeTab() {
                       <TD right>{total.count}件</TD>
                       <TD right>{total.avgDays}日</TD>
                       <TD right>{total.avgMonths}ヶ月前</TD>
+                      <TD right>{fmtLeadMedian(total.medianDays, total.medianMonths)}</TD>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
           </div>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            ※ 中央値は、先行日数を短い順に並べたときの真ん中の値です（平均は、ごく早い時期の問い合わせに引っ張られることがあります）。
+            ※ 運用開始前のデータには、過去データから取込・後入力された案件が含まれます。現在の入力方法とは条件が異なるため、参考値としてご覧ください。
+          </p>
         </>
       )}
     </div>
