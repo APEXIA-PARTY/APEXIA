@@ -903,8 +903,9 @@ function LeadTimeTab() {
                       <span className="block text-[10px] text-muted-foreground">
                         中央値 {r.medianMonths != null ? `${r.medianMonths}` : '—'}ヶ月・{r.count}件
                       </span>
+                      {/* バッジは数値ブロックの中に置き、棒トラックの横幅を消費しない（全月でトラック幅を同一にする） */}
+                      {r.isPartial && <span className="mt-0.5 block"><PartialBadge /></span>}
                     </span>
-                    {r.isPartial && <PartialBadge />}
                   </div>
                 </div>
               ))}
