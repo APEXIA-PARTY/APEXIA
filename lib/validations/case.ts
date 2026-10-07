@@ -79,7 +79,8 @@ export const caseFormSchema = z.object({
   event_date: emptyToUndefined(z.string().optional()),
   event_name: emptyToUndefined(z.string().max(200).optional()),
   guest_count: optionalNumber,
-  notes: emptyToUndefined(z.string().max(2000).optional()),
+  // 空欄は null で送る（undefined だと保存内容から notes が落ち、既存の備考を消せない）
+  notes: emptyToNull(z.string().max(2000).nullable().optional()),
   estimate_amount: z.preprocess((val) => {
     if (val === '' || val === null || val === undefined) return 0
 
