@@ -21,8 +21,15 @@ import { DuplicateCaseButton } from '@/components/cases/DuplicateCaseButton'
 import Link from 'next/link'
 import { Pencil, Lock, AlertTriangle } from 'lucide-react'
 import { PdfDownloadButton } from '@/components/cases/PdfDownloadButton'
+import { BackToPreviousButton } from '@/components/cases/CaseDetail/BackToPreviousButton'
 
-export default async function CaseDetailPage({ params }: { params: { id: string } }) {
+export default async function CaseDetailPage({
+  params,
+  searchParams,
+}: {
+  params: { id: string }
+  searchParams: { from?: string | string[]; nav?: string | string[] }
+}) {
   // getUser() を1回だけ呼んで user と role を同時取得
   const { user, role } = await getCurrentUserAndRole()
   if (!user) redirect('/login')
@@ -60,6 +67,12 @@ export default async function CaseDetailPage({ params }: { params: { id: string 
             <Link href="/cases" className="text-sm text-muted-foreground hover:underline">
               ← 一覧
             </Link>
+            {/* 案件一覧・日別問合せから通常クリック/Enterで開いた場合だけ表示（条件を満たさなければ何も出ない） */}
+            <BackToPreviousButton
+              caseId={params.id}
+              from={typeof searchParams.from === 'string' ? searchParams.from : undefined}
+              nav={typeof searchParams.nav === 'string' ? searchParams.nav : undefined}
+            />
             {/* PDF出力（全ロール）: fetch+blob で credentials:include を確実に送信 */}
             <PdfDownloadButton caseId={params.id} />
 

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { StatusBadge } from '@/components/cases/StatusBadge'
 import { DuplicateCaseButton } from '@/components/cases/DuplicateCaseButton'
+import { CaseDetailLink } from '@/components/cases/CaseDetailLink'
 import { EventDateFilterFields } from '@/components/cases/EventDateFilterFields'
 import { EventMonthSummary } from '@/components/cases/EventMonthSummary'
 import { formatDate, formatCurrency, formatDateTime } from '@/lib/utils/format'
@@ -274,8 +275,9 @@ const cases = data ?? []
                     <DuplicateCaseButton caseId={c.id} eventName={c.event_name} company={c.company} variant="icon" />
                   </div>
                 )}
-                <Link
-                  href={`/cases/${c.id}`}
+                <CaseDetailLink
+                  caseId={c.id}
+                  from="cases"
                   className="block pr-8 active:opacity-70"
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -289,7 +291,7 @@ const cases = data ?? []
                       {c.estimate_amount > 0 ? formatCurrency(c.estimate_amount) : '—'}
                     </p>
                   </div>
-                </Link>
+                </CaseDetailLink>
               </div>
             ))}
           </div>
@@ -327,9 +329,9 @@ const cases = data ?? []
                 {cases.map((c: any) => (
                   <tr key={c.id} className="hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3">
-                      <Link href={`/cases/${c.id}`} className="font-medium text-foreground hover:text-primary hover:underline">
+                      <CaseDetailLink caseId={c.id} from="cases" className="font-medium text-foreground hover:text-primary hover:underline">
                         {c.company ?? '—'}
-                      </Link>
+                      </CaseDetailLink>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{c.event_name || '—'}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{formatDate(c.event_date)}</td>
