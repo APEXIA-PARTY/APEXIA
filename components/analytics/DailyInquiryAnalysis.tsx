@@ -7,6 +7,7 @@ import { StatusBadge } from '@/components/cases/StatusBadge'
 import { CaseDetailLink } from '@/components/cases/CaseDetailLink'
 import { formatYenFull } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
+import { shouldActivateRowLink } from '@/lib/utils/rowLinkClick'
 import type { CaseStatus } from '@/types/database'
 import {
   DAILY_UNASSIGNED_TARGET,
@@ -287,6 +288,24 @@ export function DailyInquiryAnalysis() {
     setPage(1)
   }
 
+  // PC用案件表: 行のリンク外を通常クリックしたとき、その行の既存リンク（CaseDetailLink）を起動する。
+  // 遷移・from/nav・記録・戻る機能は CaseDetailLink が唯一の入口。リンク自身のクリックや文字選択では何もしない。
+  const handleCaseRowClick = (e: React.MouseEvent<HTMLTableRowElement>) => {
+    const selection = typeof window !== 'undefined' ? window.getSelection() : null
+    const activate = shouldActivateRowLink({
+      button: e.button,
+      ctrlKey: e.ctrlKey,
+      metaKey: e.metaKey,
+      shiftKey: e.shiftKey,
+      altKey: e.altKey,
+      defaultPrevented: e.defaultPrevented,
+      insideInteractive: !!(e.target as Element).closest('a, button, input, select, textarea'),
+      hasTextSelection: !!selection && !selection.isCollapsed && selection.toString().trim() !== '',
+    })
+    if (!activate) return
+    e.currentTarget.querySelector<HTMLAnchorElement>('a[href^="/cases/"]')?.click()
+  }
+
   const yearOptions = buildYearOptions(yearSel)
   const inProgress = month ? isMonthInProgress(month) : false
 
@@ -549,7 +568,7 @@ export function DailyInquiryAnalysis() {
                         </thead>
                         <tbody className="divide-y divide-border">
                           {casesData.cases.map((c) => (
-                            <tr key={c.id} className="hover:bg-muted/20">
+                            <tr key={c.id} onClick={handleCaseRowClick} className="cursor-pointer hover:bg-muted/20">
                               <td className="px-3 py-2.5 text-sm">
                                 <CaseDetailLink
                                   caseId={c.id}
