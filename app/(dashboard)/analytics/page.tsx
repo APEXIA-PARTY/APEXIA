@@ -1,10 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
+import { useState, useEffect, useRef, useCallback, Fragment, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { TrendingUp, BarChart2, Users, Calendar, XCircle, DollarSign } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { EventYearlyAnalysis } from '@/components/analytics/EventYearlyAnalysis'
+import { DailyInquiryAnalysis } from '@/components/analytics/DailyInquiryAnalysis'
+import { parseDailyParams } from '@/lib/utils/dailyInquiry'
 import { formatYenFull, formatManShort } from '@/lib/utils/format'
 
 // ─── フォーマットユーティリティ ────────────────────────────────
@@ -49,6 +52,7 @@ const TABS = [
   { key: 'options',         label: 'オプション' },
   { key: 'lead-time',       label: '先行期間' },
   { key: 'food-plans',       label: '飲食プラン' },
+  { key: 'daily',            label: '日別問合せ' },
 ] as const
 type TabKey = typeof TABS[number]['key']
 
@@ -1052,11 +1056,13 @@ function LoadingBlock() {
 // ─── メインページ ──────────────────────────────────────────────
 type AnalyticsView = 'inquiry' | 'event'
 
-export default function AnalyticsPage() {
+function AnalyticsPageContent() {
+  const searchParams = useSearchParams()
   // 大分類: ①問合せ分析（inquiry_date基準、既存の全機能） / ②開催月分析（event_date基準、新規）
   // 両方を同時表示すると基準日の異なる数字が混在し誤認を招くため、必ずどちらか一方のみ表示する。
   const [view, setView] = useState<AnalyticsView>('inquiry')
-  const [tab, setTab]   = useState<TabKey>('monthly')
+  // URL が日別問合せタブ（view=inquiry&tab=daily）を指している場合だけ、そのタブで開く
+  const [tab, setTab]   = useState<TabKey>(() => (parseDailyParams(searchParams).requested ? 'daily' : 'monthly'))
   const [year, setYear] = useState(new Date().getFullYear().toString())
   const [summary, setSummary] = useState<any>(null)
 
@@ -1064,6 +1070,17 @@ export default function AnalyticsPage() {
   useEffect(() => {
     fetch('/api/analytics/dashboard').then(r => r.ok ? r.json() : null).then(d => { if (d) setSummary(d) }).catch(() => {})
   }, [])
+
+  // 日別問合せ以外へ切り替えるとき、URLに残った日別問合せの条件を消す（他のタブのURLは変えない）
+  const clearDailyUrl = () => {
+    try {
+      if (new URLSearchParams(window.location.search).get('tab') === 'daily') {
+        window.history.replaceState(window.history.state, '', window.location.pathname)
+      }
+    } catch {
+      // URLを更新できなくても画面の動作は続ける
+    }
+  }
 
   const mk = summary?.kpi?.thisMonth
   const yk = summary?.kpi?.thisYear
@@ -1088,7 +1105,7 @@ export default function AnalyticsPage() {
           { key: 'inquiry' as const, label: '① 問合せ分析' },
           { key: 'event'   as const, label: '② 開催月分析' },
         ].map(v => (
-          <button key={v.key} onClick={() => setView(v.key)}
+          <button key={v.key} onClick={() => { setView(v.key); if (v.key !== 'inquiry') clearDailyUrl() }}
             className={cn('rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
               view === v.key ? 'bg-white shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50')}>
             {v.label}
@@ -1146,7 +1163,7 @@ export default function AnalyticsPage() {
         <div className="mb-4 overflow-x-auto">
         <div className="flex min-w-max gap-1 rounded-lg border border-border bg-muted/20 p-1">
           {TABS.map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)}
+            <button key={t.key} onClick={() => { setTab(t.key); if (t.key !== 'daily') clearDailyUrl() }}
               className={cn('rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
                 tab === t.key ? 'bg-white shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50')}>
               {t.label}
@@ -1195,8 +1212,18 @@ export default function AnalyticsPage() {
         {tab === 'options'          && <OptionsTab />}
         {tab === 'lead-time'        && <LeadTimeTab />}
         {tab === 'food-plans'        && <FoodPlansTab />}
+        {tab === 'daily'             && <DailyInquiryAnalysis />}
       </div>
       )}
     </div>
+  )
+}
+
+// useSearchParams を使うため Suspense 境界で包む（Next.js 14 の要件）
+export default function AnalyticsPage() {
+  return (
+    <Suspense fallback={null}>
+      <AnalyticsPageContent />
+    </Suspense>
   )
 }
